@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Calorie Counter</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#15803d" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Calories" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div id="app" class="app">
+  <header class="topbar">
+    <div class="brand">🥗 Calorie Counter</div>
+    <button id="data-btn" class="icon-btn" title="Backup &amp; restore">⚙</button>
+  </header>
+
+  <div id="onboarding-banner" class="banner hidden">
+    Welcome! Fill in your details below so we can calculate your calorie budget.
+  </div>
+
+  <main class="content">
+
+    <section id="tab-today" class="tab-panel active">
+      <div id="today-panel">
+        <div class="date-nav">
+          <button id="diary-prev-btn" class="icon-btn" title="Previous day">‹</button>
+          <div id="diary-date-label" class="date-label">Today</div>
+          <button id="diary-next-btn" class="icon-btn" title="Next day">›</button>
+        </div>
+
+        <div class="budget-card">
+          <div class="budget-ring-wrap">
+            <div id="budget-ring" class="budget-ring" style="--pct:0">
+              <div class="budget-ring-inner">
+                <div id="budget-remaining" class="budget-remaining">0</div>
+                <div class="budget-remaining-label">remaining</div>
+              </div>
+            </div>
+          </div>
+          <div class="budget-stats">
+            <div class="budget-stat"><span id="budget-goal">0</span><label>Budget</label></div>
+            <div class="budget-stat"><span id="budget-food">0</span><label>Food</label></div>
+            <div class="budget-stat"><span id="budget-exercise">0</span><label>Exercise</label></div>
+          </div>
+        </div>
+
+        <div class="macro-bars">
+          <div class="macro-bar">
+            <div class="macro-bar-head"><span>Protein</span><span id="macro-protein-label">0g / 0g</span></div>
+            <div class="macro-track"><div id="macro-protein-fill" class="macro-fill protein" style="width:0%"></div></div>
+          </div>
+          <div class="macro-bar">
+            <div class="macro-bar-head"><span>Carbs</span><span id="macro-carbs-label">0g / 0g</span></div>
+            <div class="macro-track"><div id="macro-carbs-fill" class="macro-fill carbs" style="width:0%"></div></div>
+          </div>
+          <div class="macro-bar">
+            <div class="macro-bar-head"><span>Fat</span><span id="macro-fat-label">0g / 0g</span></div>
+            <div class="macro-track"><div id="macro-fat-fill" class="macro-fill fat" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <div id="meal-breakfast" class="meal-section">
+          <div class="meal-head">
+            <h3>Breakfast</h3>
+            <div class="meal-head-right"><span id="meal-breakfast-total" class="meal-total">0 cal</span>
+              <button class="icon-btn add-meal-btn" data-meal="breakfast" title="Add food">+</button></div>
+          </div>
+          <div id="meal-breakfast-list" class="list"></div>
+        </div>
+
+        <div id="meal-lunch" class="meal-section">
+          <div class="meal-head">
+            <h3>Lunch</h3>
+            <div class="meal-head-right"><span id="meal-lunch-total" class="meal-total">0 cal</span>
+              <button class="icon-btn add-meal-btn" data-meal="lunch" title="Add food">+</button></div>
+          </div>
+          <div id="meal-lunch-list" class="list"></div>
+        </div>
+
+        <div id="meal-dinner" class="meal-section">
+          <div class="meal-head">
+            <h3>Dinner</h3>
+            <div class="meal-head-right"><span id="meal-dinner-total" class="meal-total">0 cal</span>
+              <button class="icon-btn add-meal-btn" data-meal="dinner" title="Add food">+</button></div>
+          </div>
+          <div id="meal-dinner-list" class="list"></div>
+        </div>
+
+        <div id="meal-snacks" class="meal-section">
+          <div class="meal-head">
+            <h3>Snacks</h3>
+            <div class="meal-head-right"><span id="meal-snacks-total" class="meal-total">0 cal</span>
+              <button class="icon-btn add-meal-btn" data-meal="snacks" title="Add food">+</button></div>
+          </div>
+          <div id="meal-snacks-list" class="list"></div>
+        </div>
+
+        <div class="meal-section">
+          <div class="meal-head">
+            <h3>Exercise</h3>
+            <div class="meal-head-right"><button id="add-exercise-btn" class="icon-btn" title="Add exercise">+</button></div>
+          </div>
+          <div id="exercise-list" class="list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-foods" class="tab-panel">
+      <h2 class="panel-title">My Foods</h2>
+      <input id="food-search" class="text-input" type="search" placeholder="Search foods..." />
+      <div id="foods-list" class="list"></div>
+      <button id="new-food-btn" class="primary-btn full">+ New Food</button>
+    </section>
+
+    <section id="tab-weight" class="tab-panel">
+      <h2 class="panel-title">Weight</h2>
+      <div class="weight-summary">
+        <div class="weight-stat"><span id="weight-current">--</span><label>Current</label></div>
+        <div class="weight-stat"><span id="weight-goal">--</span><label>Goal</label></div>
+      </div>
+      <div id="weight-change" class="weight-change-hint"></div>
+      <div id="weight-chart" class="weight-chart"></div>
+
+      <form id="weight-form" class="inline-form">
+        <input id="weight-date" name="date" type="date" required />
+        <input name="value" type="number" step="0.1" min="0" placeholder="Weight" required />
+        <button type="submit" class="primary-btn">Log</button>
+      </form>
+
+      <div id="weight-list" class="list"></div>
+    </section>
+
+    <section id="tab-settings" class="tab-panel">
+      <h2 class="panel-title">Goals &amp; TDEE Calculator</h2>
+      <form id="settings-form">
+        <label class="field">Units
+          <select name="units">
+            <option value="imperial">Imperial (lb, ft/in)</option>
+            <option value="metric">Metric (kg, cm)</option>
+          </select>
+        </label>
+
+        <label class="field">Sex
+          <select name="sex">
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
+        </label>
+
+        <label class="field">Age
+          <input name="age" type="number" min="10" max="100" required />
+        </label>
+
+        <div id="height-imperial" class="field-row">
+          <label class="field">Height (ft)<input name="heightFt" type="number" min="3" max="8" /></label>
+          <label class="field">Height (in)<input name="heightIn" type="number" min="0" max="11" /></label>
+        </div>
+        <label id="height-metric" class="field">Height (cm)
+          <input name="heightCm" type="number" min="100" max="250" />
+        </label>
+
+        <div id="weight-imperial" class="field-row">
+          <label class="field">Weight (lb)<input name="weightLb" type="number" step="0.1" min="0" /></label>
+          <label class="field">Goal weight (lb)<input name="goalWeightLb" type="number" step="0.1" min="0" /></label>
+        </div>
+        <div id="weight-metric" class="field-row">
+          <label class="field">Weight (kg)<input name="weightKg" type="number" step="0.1" min="0" /></label>
+          <label class="field">Goal weight (kg)<input name="goalWeightKg" type="number" step="0.1" min="0" /></label>
+        </div>
+
+        <label class="field">Activity level
+          <select name="activity">
+            <option value="sedentary">Sedentary — little or no exercise</option>
+            <option value="light">Lightly active — exercise 1-3 days/week</option>
+            <option value="moderate">Moderately active — exercise 3-5 days/week</option>
+            <option value="active">Active — exercise 6-7 days/week</option>
+            <option value="veryActive">Very active — hard daily exercise or physical job</option>
+          </select>
+        </label>
+
+        <label class="field">Goal
+          <select name="goal">
+            <option value="lose">Lose weight</option>
+            <option value="maintain">Maintain weight</option>
+            <option value="gain">Gain weight</option>
+          </select>
+        </label>
+
+        <label id="rate-row" class="field">Rate
+          <select name="rate">
+            <option value="0.5">0.5 lb / week</option>
+            <option value="1">1 lb / week</option>
+            <option value="1.5">1.5 lb / week</option>
+            <option value="2">2 lb / week</option>
+          </select>
+        </label>
+
+        <div class="field">
+          <div class="field-label-row">Macro split <span id="macro-sum-hint">Total: 100%</span></div>
+          <div class="field-row">
+            <label class="field">Protein %<input name="proteinPct" type="number" min="0" max="100" /></label>
+            <label class="field">Carbs %<input name="carbsPct" type="number" min="0" max="100" /></label>
+            <label class="field">Fat %<input name="fatPct" type="number" min="0" max="100" /></label>
+          </div>
+        </div>
+
+        <div class="results-card">
+          <div class="result-row"><span>BMR</span><strong id="result-bmr">0</strong></div>
+          <div class="result-row"><span>TDEE (maintenance)</span><strong id="result-tdee">0</strong></div>
+          <div class="result-row highlight"><span>Daily calorie budget</span><strong id="result-goal">0</strong></div>
+          <div class="result-row"><span>Protein target</span><strong id="result-protein">0g</strong></div>
+          <div class="result-row"><span>Carbs target</span><strong id="result-carbs">0g</strong></div>
+          <div class="result-row"><span>Fat target</span><strong id="result-fat">0g</strong></div>
+          <div id="low-cal-warning" class="warning hidden">
+            This budget is below the commonly recommended minimum. Consider a slower rate of loss, and check with a doctor before going this low.
+          </div>
+        </div>
+
+        <button type="submit" class="primary-btn full">Save &amp; Calculate</button>
+      </form>
+    </section>
+
+  </main>
+
+  <nav class="tabbar">
+    <button data-tab="today"><span class="tab-icon">🍽️</span>Today</button>
+    <button data-tab="foods"><span class="tab-icon">📋</span>Foods</button>
+    <button data-tab="weight"><span class="tab-icon">⚖️</span>Weight</button>
+    <button data-tab="settings"><span class="tab-icon">🎯</span>Goals</button>
+  </nav>
+</div>
+
+<!-- Add to diary -->
+<div id="add-entry-modal" class="modal hidden" data-close-modal="add-entry-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="add-entry-title">Add food</h3>
+      <button class="icon-btn" data-close-modal="add-entry-modal">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <button id="add-entry-tab-mine" class="modal-tab active">My Foods</button>
+      <button id="add-entry-tab-quick" class="modal-tab">Quick Add</button>
+    </div>
+    <div id="add-entry-pane-mine">
+      <input id="add-entry-search" class="text-input" type="search" placeholder="Search foods..." />
+      <div id="add-entry-food-list" class="list scroll-list"></div>
+    </div>
+    <div id="add-entry-pane-quick" class="hidden">
+      <form id="quick-add-form">
+        <label class="field">Name<input name="name" type="text" required /></label>
+        <div class="field-row">
+          <label class="field">Calories<input name="calories" type="number" min="0" required /></label>
+        </div>
+        <div class="field-row">
+          <label class="field">Protein (g)<input name="protein" type="number" min="0" /></label>
+          <label class="field">Carbs (g)<input name="carbs" type="number" min="0" /></label>
+          <label class="field">Fat (g)<input name="fat" type="number" min="0" /></label>
+        </div>
+        <button type="submit" class="primary-btn full">Add</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add exercise -->
+<div id="add-exercise-modal" class="modal hidden" data-close-modal="add-exercise-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3>Log exercise</h3>
+      <button class="icon-btn" data-close-modal="add-exercise-modal">✕</button>
+    </div>
+    <form id="exercise-form">
+      <label class="field">Activity<input name="name" type="text" placeholder="e.g. Running" required /></label>
+      <label class="field">Calories burned<input name="calories" type="number" min="0" required /></label>
+      <button type="submit" class="primary-btn full">Add</button>
+    </form>
+  </div>
+</div>
+
+<!-- Food editor -->
+<div id="food-editor-modal" class="modal hidden" data-close-modal="food-editor-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="food-editor-title">New Food</h3>
+      <button class="icon-btn" data-close-modal="food-editor-modal">✕</button>
+    </div>
+    <form id="food-form">
+      <label class="field">Name<input name="name" type="text" required /></label>
+      <label class="field">Serving size<input name="servingDesc" type="text" placeholder="e.g. 1 cup, 100g" /></label>
+      <label class="field">Calories (per serving)<input name="calories" type="number" min="0" required /></label>
+      <div class="field-row">
+        <label class="field">Protein (g)<input name="protein" type="number" min="0" /></label>
+        <label class="field">Carbs (g)<input name="carbs" type="number" min="0" /></label>
+        <label class="field">Fat (g)<input name="fat" type="number" min="0" /></label>
+      </div>
+      <button type="submit" class="primary-btn full">Save Food</button>
+    </form>
+  </div>
+</div>
+
+<!-- Log a saved food to today's diary -->
+<div id="log-food-modal" class="modal hidden" data-close-modal="log-food-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="log-food-title">Log food</h3>
+      <button class="icon-btn" data-close-modal="log-food-modal">✕</button>
+    </div>
+    <form id="log-food-form">
+      <label class="field">Meal
+        <select id="log-food-meal">
+          <option value="breakfast">Breakfast</option>
+          <option value="lunch">Lunch</option>
+          <option value="dinner">Dinner</option>
+          <option value="snacks">Snacks</option>
+        </select>
+      </label>
+      <label class="field">Servings<input id="log-food-qty" type="number" step="0.25" min="0.25" value="1" /></label>
+      <button type="submit" class="primary-btn full">Add to Diary</button>
+    </form>
+  </div>
+</div>
+
+<!-- Backup & restore -->
+<div id="data-modal" class="modal hidden" data-close-modal="data-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3>Backup &amp; Restore</h3>
+      <button class="icon-btn" data-close-modal="data-modal">✕</button>
+    </div>
+    <p class="modal-hint">Everything is stored only on this device. Export a backup before switching phones, or to move your data.</p>
+    <button id="export-btn" class="secondary-btn full">Export Backup</button>
+    <label class="secondary-btn full file-label">
+      Import Backup
+      <input id="import-input" type="file" accept="application/json" hidden />
+    </label>
+  </div>
+</div>
+
+<script src="db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

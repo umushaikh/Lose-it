@@ -1,0 +1,12 @@
+{
+  "name": "lose-it-clone",
+  "version": "1.0.0",
+  "description": "Personal calorie counter and TDEE calculator: log food, track weight, hit your goal",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

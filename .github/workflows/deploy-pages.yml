@@ -1,0 +1,52 @@
+name: Deploy to GitHub Pages
+
+# Publishes public/ as the site. The app is a static PWA, so serving it
+# over https is what enables offline mode, home-screen install, and the
+# native share sheet. No food, weight, or settings data is involved: that
+# lives only in the browser's local storage on the device.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/calorie-counting-tdee-app-gjku14
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      # Gives every deploy a distinct service worker and cache name, so
+      # browsers actually pick up new versions instead of serving the old
+      # cached app indefinitely.
+      - name: Stamp the service worker with this commit
+        run: |
+          sed -i "s/__BUILD_ID__/${GITHUB_SHA}/" public/sw.js
+          grep -q "calorie-counter-\${BUILD_ID}" public/sw.js && grep -q "${GITHUB_SHA}" public/sw.js \
+            && echo "stamped BUILD_ID=${GITHUB_SHA}" \
+            || { echo "service worker was not stamped"; exit 1; }
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
