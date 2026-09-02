@@ -5,13 +5,26 @@ const MEALS = [
   { key: 'snacks', label: 'Snacks' }
 ];
 
+// Multipliers and wording match calculator.net's TDEE calculator, which uses a
+// six-level scale — note its "Moderate" is 1.465, not the 1.55 of the older
+// five-level Harris-Benedict table.
 const ACTIVITY_LEVELS = [
-  { key: 'sedentary', label: 'Sedentary', hint: 'Little or no exercise', mult: 1.2 },
-  { key: 'light', label: 'Lightly active', hint: 'Exercise 1-3 days/week', mult: 1.375 },
-  { key: 'moderate', label: 'Moderately active', hint: 'Exercise 3-5 days/week', mult: 1.55 },
-  { key: 'active', label: 'Active', hint: 'Exercise 6-7 days/week', mult: 1.725 },
-  { key: 'veryActive', label: 'Very active', hint: 'Hard daily exercise or physical job', mult: 1.9 }
+  { key: 'sedentary', label: 'Sedentary: little or no exercise', mult: 1.2 },
+  { key: 'light', label: 'Light: exercise 1-3 times/week', mult: 1.375 },
+  { key: 'moderate', label: 'Moderate: exercise 4-5 times/week', mult: 1.465 },
+  { key: 'active', label: 'Active: daily exercise or intense exercise 3-4 times/week', mult: 1.55 },
+  { key: 'veryActive', label: 'Very Active: intense exercise 6-7 times/week', mult: 1.725 },
+  { key: 'extraActive', label: 'Extra Active: very intense exercise daily, or physical job', mult: 1.9 }
 ];
+
+// 3500 kcal per lb of fat, spread over 7 days.
+const CALORIES_PER_LB_PER_WEEK = 500;
+const LB_PER_KG = 2.20462262;
+
+const RATE_OPTIONS = {
+  imperial: [0.5, 1, 1.5, 2].map(lb => ({ lb, label: `${lb} lb / week` })),
+  metric: [0.25, 0.5, 0.75, 1].map(kg => ({ lb: kg * LB_PER_KG, label: `${kg} kg / week` }))
+};
 
 const state = {
   settings: null,
@@ -22,7 +35,9 @@ const state = {
   weightLog: [],
   activeTab: 'today',
   foodSearch: '',
-  foodEditing: null // { id? } while the add/edit food sheet is open
+  foodEditing: null, // { id? } while the add/edit food sheet is open
+  searchResults: [], // online (branded) hits merged into the picker
+  visibleResults: [] // exactly what the picker last rendered, indexed by row
 };
 
 // Tracks which units the settings form is currently displaying, independent of
@@ -47,8 +62,17 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Dates are handled entirely in local time. Going through toISOString() here
+// would format the UTC day, which is the previous or next calendar day for most
+// of the world's timezones, so stepping through the diary would skip or stick.
+function toDateStr(d) {
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return toDateStr(new Date());
 }
 
 function escapeHtml(str) {
@@ -66,14 +90,14 @@ function formatDate(dateStr) {
   if (dateStr === todayStr()) return 'Today';
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  if (dateStr === yesterday.toISOString().slice(0, 10)) return 'Yesterday';
+  if (dateStr === toDateStr(yesterday)) return 'Yesterday';
   return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function shiftDate(dateStr, days) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return toDateStr(d);
 }
 
 // ---- Unit conversions ----
@@ -107,10 +131,23 @@ function calcTDEE(bmr, activityKey) {
 }
 
 function calcGoalCalories(tdee, goal, rateLbPerWeek) {
-  const dailyAdjust = Math.round((Number(rateLbPerWeek) || 0) * 500); // 3500 cal/lb of fat, spread over 7 days
+  const dailyAdjust = Math.round((Number(rateLbPerWeek) || 0) * CALORIES_PER_LB_PER_WEEK);
   if (goal === 'lose') return tdee - dailyAdjust;
   if (goal === 'gain') return tdee + dailyAdjust;
   return tdee;
+}
+
+// Rate choices read in whichever unit the form is set to, but are always stored
+// as lb/week so the calorie math has a single basis.
+function renderRateOptions(units, selectedLb) {
+  const select = document.getElementById('settings-form').rate;
+  const options = RATE_OPTIONS[units] || RATE_OPTIONS.imperial;
+  select.innerHTML = options
+    .map(o => `<option value="${o.lb.toFixed(4)}">${o.label}</option>`)
+    .join('');
+  const closest = options.reduce((best, o) =>
+    Math.abs(o.lb - selectedLb) < Math.abs(best.lb - selectedLb) ? o : best, options[0]);
+  select.value = closest.lb.toFixed(4);
 }
 
 function calcMacroGrams(calories, split) {
@@ -323,10 +360,11 @@ function populateSettingsForm() {
   form.age.value = s.age;
   form.activity.value = s.activity;
   form.goal.value = s.goal;
-  form.rate.value = s.rateLbPerWeek;
+  renderRateOptions(s.units, s.rateLbPerWeek);
   form.proteinPct.value = s.macroSplit.proteinPct;
   form.carbsPct.value = s.macroSplit.carbsPct;
   form.fatPct.value = s.macroSplit.fatPct;
+  form.calorieOverride.value = s.calorieOverride != null ? s.calorieOverride : '';
 
   if (s.units === 'metric') {
     form.heightCm.value = Math.round(s.heightCm);
@@ -359,11 +397,13 @@ function updateSettingsPreview() {
   document.getElementById('macro-sum-hint').textContent = `Total: ${pctSum}%`;
   document.getElementById('macro-sum-hint').classList.toggle('negative', pctSum !== 100);
 
-  const liveSettings = readSettingsFromForm(true);
+  const liveSettings = readSettingsFromForm();
   const goals = computeGoals(liveSettings);
   document.getElementById('result-bmr').textContent = goals.bmr.toLocaleString();
   document.getElementById('result-tdee').textContent = goals.tdee.toLocaleString();
   document.getElementById('result-goal').textContent = goals.goalCalories.toLocaleString();
+  document.getElementById('result-calculated').textContent = goals.rawGoal.toLocaleString();
+  document.getElementById('override-active-row').classList.toggle('hidden', liveSettings.calorieOverride == null);
   document.getElementById('result-protein').textContent = `${goals.macros.proteinG}g`;
   document.getElementById('result-carbs').textContent = `${goals.macros.carbsG}g`;
   document.getElementById('result-fat').textContent = `${goals.macros.fatG}g`;
@@ -388,7 +428,9 @@ function convertAndSwitchUnits(newUnits) {
     goalWeightKg = form.goalWeightLb.value ? lbToKg(Number(form.goalWeightLb.value)) : null;
   }
 
+  const currentRateLb = Number(form.rate.value) || state.settings.rateLbPerWeek;
   formUnits = newUnits;
+  renderRateOptions(newUnits, currentRateLb);
   if (newUnits === 'metric') {
     form.heightCm.value = Math.round(heightCm);
     form.weightKg.value = Math.round(weightKg * 10) / 10;
@@ -404,7 +446,7 @@ function convertAndSwitchUnits(newUnits) {
 }
 
 // Reads the live form without saving, so the calculator preview updates as you type.
-function readSettingsFromForm(useLiveDom) {
+function readSettingsFromForm() {
   const form = document.getElementById('settings-form');
   const units = form.units.value;
   let heightCm, weightKg, goalWeightKg = null;
@@ -434,7 +476,7 @@ function readSettingsFromForm(useLiveDom) {
       carbsPct: Number(form.carbsPct.value) || 0,
       fatPct: Number(form.fatPct.value) || 0
     },
-    calorieOverride: useLiveDom ? state.settings.calorieOverride : null
+    calorieOverride: form.calorieOverride.value ? Number(form.calorieOverride.value) : null
   };
 }
 
@@ -452,29 +494,86 @@ function openAddEntryModal(meal) {
   document.getElementById('add-entry-title').textContent = `Add to ${MEALS.find(m => m.key === meal).label}`;
   document.getElementById('add-entry-search').value = '';
   document.getElementById('quick-add-form').reset();
-  document.getElementById('add-entry-tab-mine').click();
+  document.getElementById('add-entry-tab-search').click();
+  state.searchResults = [];
   renderAddEntryFoodList('');
   openModal('add-entry-modal');
   document.getElementById('add-entry-search').focus();
 }
 
-function renderAddEntryFoodList(query) {
+// An empty box shows your saved foods; typing searches those plus the built-in
+// database. Online (branded) results are merged in when you ask for them.
+function localMatches(query) {
   const q = query.trim().toLowerCase();
-  const list = state.foods.filter(f => !q || f.name.toLowerCase().includes(q));
+  if (!q) return state.foods.map(f => ({ ...f, source: 'mine' }));
+  const mine = state.foods
+    .filter(f => f.name.toLowerCase().includes(q))
+    .map(f => ({ ...f, source: 'mine' }));
+  const builtIn = FOOD_DB
+    .filter(f => f.name.toLowerCase().includes(q))
+    .map(f => ({ ...f, source: 'db' }));
+  return [...mine, ...builtIn];
+}
+
+const SOURCE_LABEL = { mine: 'My food', db: 'Built-in', online: 'Branded' };
+
+function renderAddEntryFoodList(query) {
+  const results = [...localMatches(query), ...state.searchResults];
   const container = document.getElementById('add-entry-food-list');
-  container.innerHTML = list.length
-    ? list.map(f => `
-      <div class="food-row pick-row" data-food-id="${f.id}">
-        <div class="entry-info">
-          <div class="entry-name">${escapeHtml(f.name)}</div>
-          <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal</div>
-        </div>
-        <div class="qty-picker">
-          <input type="number" class="qty-input" min="0.25" step="0.25" value="1" data-food-id="${f.id}" />
-          <button class="primary-btn small add-picked-food-btn" data-food-id="${f.id}">Add</button>
-        </div>
-      </div>`).join('')
-    : `<div class="empty-hint">${state.foods.length ? 'No matches' : 'No saved foods yet — try Quick Add'}</div>`;
+  if (!results.length) {
+    container.innerHTML = query.trim()
+      ? `<div class="empty-hint">No matches. Try “Search branded foods” below, or Quick Add.</div>`
+      : `<div class="empty-hint">Start typing to search foods, or use Quick Add.</div>`;
+    return;
+  }
+  container.innerHTML = results.map((f, i) => `
+    <div class="food-row pick-row" data-idx="${i}">
+      <div class="entry-info">
+        <div class="entry-name">${escapeHtml(f.name)}</div>
+        <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}
+          <span class="source-tag">${SOURCE_LABEL[f.source] || ''}</span></div>
+      </div>
+      <div class="qty-picker">
+        <input type="number" class="qty-input" min="0.25" step="0.25" value="1" data-idx="${i}" />
+        <button class="primary-btn small add-picked-food-btn" data-idx="${i}">Add</button>
+      </div>
+    </div>`).join('');
+  // Keep the rendered order addressable by index for the click handler.
+  state.visibleResults = results;
+}
+
+// Open Food Facts is a free, openly licensed product database (barcodes and
+// branded items), which is what fills the gap the built-in list can't cover.
+async function searchOnlineFoods(query) {
+  const url = 'https://world.openfoodfacts.org/cgi/search.pl'
+    + `?search_terms=${encodeURIComponent(query)}`
+    + '&search_simple=1&action=process&json=1&page_size=25'
+    + '&fields=product_name,brands,nutriments,serving_size';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Search service is unavailable right now.');
+  const data = await res.json();
+  return (data.products || []).map(mapOnlineProduct).filter(Boolean);
+}
+
+function mapOnlineProduct(p) {
+  if (!p.product_name) return null;
+  const n = p.nutriments || {};
+  // Prefer the manufacturer's own serving when it carries nutrition, else
+  // fall back to the per-100g figures every product has.
+  const perServing = p.serving_size && n['energy-kcal_serving'] != null;
+  const calories = perServing ? n['energy-kcal_serving'] : n['energy-kcal_100g'];
+  if (calories == null) return null;
+  const brand = p.brands ? p.brands.split(',')[0].trim() : '';
+  const round = v => Math.round((Number(v) || 0) * 10) / 10;
+  return {
+    name: brand ? `${p.product_name} (${brand})` : p.product_name,
+    servingDesc: perServing ? p.serving_size : '100 g',
+    calories: Math.round(calories),
+    protein: round(perServing ? n.proteins_serving : n.proteins_100g),
+    carbs: round(perServing ? n.carbohydrates_serving : n.carbohydrates_100g),
+    fat: round(perServing ? n.fat_serving : n.fat_100g),
+    source: 'online'
+  };
 }
 
 function openFoodEditor(food) {
@@ -558,27 +657,61 @@ function wireEvents() {
   });
 
   // Add-entry modal: tabs
-  document.getElementById('add-entry-tab-mine').addEventListener('click', () => {
-    document.getElementById('add-entry-tab-mine').classList.add('active');
+  document.getElementById('add-entry-tab-search').addEventListener('click', () => {
+    document.getElementById('add-entry-tab-search').classList.add('active');
     document.getElementById('add-entry-tab-quick').classList.remove('active');
-    document.getElementById('add-entry-pane-mine').classList.remove('hidden');
+    document.getElementById('add-entry-pane-search').classList.remove('hidden');
     document.getElementById('add-entry-pane-quick').classList.add('hidden');
   });
   document.getElementById('add-entry-tab-quick').addEventListener('click', () => {
     document.getElementById('add-entry-tab-quick').classList.add('active');
-    document.getElementById('add-entry-tab-mine').classList.remove('active');
+    document.getElementById('add-entry-tab-search').classList.remove('active');
     document.getElementById('add-entry-pane-quick').classList.remove('hidden');
-    document.getElementById('add-entry-pane-mine').classList.add('hidden');
+    document.getElementById('add-entry-pane-search').classList.add('hidden');
   });
-  document.getElementById('add-entry-search').addEventListener('input', e => renderAddEntryFoodList(e.target.value));
+  document.getElementById('add-entry-search').addEventListener('input', e => {
+    // Online hits belong to the query that fetched them.
+    state.searchResults = [];
+    renderAddEntryFoodList(e.target.value);
+  });
+  document.getElementById('search-online-btn').addEventListener('click', async () => {
+    const query = document.getElementById('add-entry-search').value.trim();
+    const status = document.getElementById('add-entry-status');
+    if (!query) {
+      status.textContent = 'Type something to search for first.';
+      status.classList.remove('hidden');
+      return;
+    }
+    status.textContent = 'Searching branded foods…';
+    status.classList.remove('hidden');
+    try {
+      state.searchResults = await searchOnlineFoods(query);
+      status.textContent = state.searchResults.length
+        ? `Found ${state.searchResults.length} branded ${state.searchResults.length === 1 ? 'result' : 'results'}.`
+        : 'No branded results for that search.';
+    } catch {
+      state.searchResults = [];
+      status.textContent = 'Could not search online — check your connection.';
+    }
+    renderAddEntryFoodList(query);
+  });
   document.getElementById('add-entry-food-list').addEventListener('click', async e => {
     const addBtn = e.target.closest('.add-picked-food-btn');
     if (!addBtn) return;
-    const food = state.foods.find(f => f.id === addBtn.dataset.foodId);
-    const qtyInput = document.querySelector(`.qty-input[data-food-id="${addBtn.dataset.foodId}"]`);
+    const food = state.visibleResults[Number(addBtn.dataset.idx)];
+    if (!food) return;
+    const qtyInput = document.querySelector(`.qty-input[data-idx="${addBtn.dataset.idx}"]`);
     const qty = Number(qtyInput.value) || 1;
     const meal = document.getElementById('add-entry-modal').dataset.meal;
     await db.addDiaryEntry(state.currentDate, meal, { ...food, qty });
+    // Anything picked from the built-in list or online is worth keeping, so it
+    // is one tap away next time without another search. Matching on name keeps
+    // repeat logging of the same food from stacking up duplicates.
+    const alreadySaved = state.foods.some(f => f.name.toLowerCase() === food.name.toLowerCase());
+    if (food.source !== 'mine' && !alreadySaved) {
+      await db.addFood(food);
+      state.foods = await db.getFoods();
+    }
     closeModal('add-entry-modal');
     await loadDayData();
     render();
@@ -679,7 +812,7 @@ function wireEvents() {
   settingsForm.units.addEventListener('change', e => convertAndSwitchUnits(e.target.value));
   settingsForm.addEventListener('submit', async e => {
     e.preventDefault();
-    const patch = readSettingsFromForm(false);
+    const patch = readSettingsFromForm();
     state.settings = await db.saveSettings(patch);
     state.weightLog = await db.getWeightLog();
     if (state.activeTab === 'settings') {

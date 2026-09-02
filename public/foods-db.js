@@ -1,0 +1,153 @@
+// Built-in food database: common whole foods, staples and restaurant items,
+// with values derived from USDA FoodData Central (public domain) plus published
+// chain nutrition figures. Searched alongside your own saved foods; branded and
+// packaged products come from the Open Food Facts lookup in app.js.
+//
+// Per entry: calories/protein/carbs/fat are for one `servingDesc`.
+const FOOD_DB = [
+  // --- Poultry, meat, fish ---
+  { name: 'Chicken breast, skinless, cooked', servingDesc: '100 g', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
+  { name: 'Chicken thigh, skinless, cooked', servingDesc: '100 g', calories: 209, protein: 26, carbs: 0, fat: 10.9 },
+  { name: 'Chicken wings, cooked', servingDesc: '100 g', calories: 203, protein: 30.4, carbs: 0, fat: 8.1 },
+  { name: 'Ground beef 80/20, cooked', servingDesc: '100 g', calories: 254, protein: 25.8, carbs: 0, fat: 16.2 },
+  { name: 'Ground beef 90/10, cooked', servingDesc: '100 g', calories: 217, protein: 26.1, carbs: 0, fat: 11.7 },
+  { name: 'Beef steak, sirloin, cooked', servingDesc: '100 g', calories: 206, protein: 30.4, carbs: 0, fat: 8.5 },
+  { name: 'Lamb, cooked', servingDesc: '100 g', calories: 258, protein: 25.6, carbs: 0, fat: 16.5 },
+  { name: 'Pork chop, cooked', servingDesc: '100 g', calories: 231, protein: 27.3, carbs: 0, fat: 12.7 },
+  { name: 'Bacon', servingDesc: '1 slice', calories: 43, protein: 3, carbs: 0.1, fat: 3.3 },
+  { name: 'Ham, deli slice', servingDesc: '1 slice (28 g)', calories: 30, protein: 5, carbs: 0.7, fat: 0.8 },
+  { name: 'Turkey breast, cooked', servingDesc: '100 g', calories: 135, protein: 30, carbs: 0, fat: 1 },
+  { name: 'Salmon, cooked', servingDesc: '100 g', calories: 206, protein: 22.1, carbs: 0, fat: 12.4 },
+  { name: 'Tuna, canned in water', servingDesc: '100 g', calories: 116, protein: 25.5, carbs: 0, fat: 0.8 },
+  { name: 'Tilapia, cooked', servingDesc: '100 g', calories: 128, protein: 26, carbs: 0, fat: 2.7 },
+  { name: 'Cod, cooked', servingDesc: '100 g', calories: 105, protein: 22.8, carbs: 0, fat: 0.9 },
+  { name: 'Shrimp, cooked', servingDesc: '100 g', calories: 99, protein: 24, carbs: 0.2, fat: 0.3 },
+
+  // --- Eggs, plant protein ---
+  { name: 'Egg, whole', servingDesc: '1 large', calories: 72, protein: 6.3, carbs: 0.4, fat: 4.8 },
+  { name: 'Egg white', servingDesc: '1 large', calories: 17, protein: 3.6, carbs: 0.2, fat: 0.1 },
+  { name: 'Tofu, firm', servingDesc: '100 g', calories: 144, protein: 17, carbs: 2.8, fat: 8.7 },
+  { name: 'Lentils, cooked', servingDesc: '1 cup', calories: 230, protein: 17.9, carbs: 39.9, fat: 0.8 },
+  { name: 'Chickpeas, cooked', servingDesc: '1 cup', calories: 269, protein: 14.5, carbs: 45, fat: 4.2 },
+  { name: 'Black beans, cooked', servingDesc: '1 cup', calories: 227, protein: 15.2, carbs: 40.8, fat: 0.9 },
+  { name: 'Kidney beans, cooked', servingDesc: '1 cup', calories: 225, protein: 15.3, carbs: 40.4, fat: 0.9 },
+
+  // --- Dairy ---
+  { name: 'Milk, whole', servingDesc: '1 cup', calories: 149, protein: 7.7, carbs: 11.7, fat: 8 },
+  { name: 'Milk, 2%', servingDesc: '1 cup', calories: 122, protein: 8.1, carbs: 12, fat: 4.8 },
+  { name: 'Milk, skim', servingDesc: '1 cup', calories: 83, protein: 8.3, carbs: 12.2, fat: 0.2 },
+  { name: 'Greek yogurt, plain, nonfat', servingDesc: '170 g container', calories: 100, protein: 17.3, carbs: 6.1, fat: 0.7 },
+  { name: 'Yogurt, plain, whole milk', servingDesc: '1 cup', calories: 149, protein: 8.5, carbs: 11.4, fat: 8 },
+  { name: 'Cheddar cheese', servingDesc: '1 oz', calories: 115, protein: 6.5, carbs: 0.9, fat: 9.5 },
+  { name: 'Mozzarella, part-skim', servingDesc: '1 oz', calories: 72, protein: 6.9, carbs: 0.8, fat: 4.5 },
+  { name: 'Cottage cheese, 2%', servingDesc: '1 cup', calories: 194, protein: 26.7, carbs: 8.2, fat: 5.5 },
+  { name: 'Butter', servingDesc: '1 tbsp', calories: 102, protein: 0.1, carbs: 0, fat: 11.5 },
+  { name: 'Cream cheese', servingDesc: '1 tbsp', calories: 51, protein: 0.9, carbs: 0.8, fat: 5 },
+
+  // --- Grains, starches ---
+  { name: 'White rice, cooked', servingDesc: '1 cup', calories: 205, protein: 4.3, carbs: 44.5, fat: 0.4 },
+  { name: 'Brown rice, cooked', servingDesc: '1 cup', calories: 218, protein: 4.5, carbs: 45.8, fat: 1.6 },
+  { name: 'Pasta, cooked', servingDesc: '1 cup', calories: 221, protein: 8.1, carbs: 43.2, fat: 1.3 },
+  { name: 'Whole wheat bread', servingDesc: '1 slice', calories: 81, protein: 4, carbs: 13.8, fat: 1.1 },
+  { name: 'White bread', servingDesc: '1 slice', calories: 77, protein: 2.6, carbs: 14.7, fat: 1 },
+  { name: 'Bagel, plain', servingDesc: '1 medium', calories: 245, protein: 9.6, carbs: 47.9, fat: 1.5 },
+  { name: 'Oatmeal, cooked', servingDesc: '1 cup', calories: 166, protein: 5.9, carbs: 28.1, fat: 3.6 },
+  { name: 'Oats, dry', servingDesc: '1/2 cup', calories: 150, protein: 5, carbs: 27, fat: 3 },
+  { name: 'Quinoa, cooked', servingDesc: '1 cup', calories: 222, protein: 8.1, carbs: 39.4, fat: 3.6 },
+  { name: 'Couscous, cooked', servingDesc: '1 cup', calories: 176, protein: 6, carbs: 36.5, fat: 0.3 },
+  { name: 'Tortilla, flour', servingDesc: '1 medium', calories: 144, protein: 3.8, carbs: 24.2, fat: 3.5 },
+  { name: 'Potato, baked with skin', servingDesc: '1 medium', calories: 161, protein: 4.3, carbs: 36.6, fat: 0.2 },
+  { name: 'Sweet potato, baked', servingDesc: '1 medium', calories: 103, protein: 2.3, carbs: 23.6, fat: 0.2 },
+  { name: 'French fries', servingDesc: 'medium serving', calories: 365, protein: 4, carbs: 48, fat: 17 },
+  { name: 'Corn flakes cereal', servingDesc: '1 cup', calories: 100, protein: 2, carbs: 24, fat: 0.1 },
+  { name: 'Naan bread', servingDesc: '1 piece', calories: 262, protein: 8.7, carbs: 45.4, fat: 5.1 },
+  { name: 'Roti / chapati', servingDesc: '1 piece', calories: 120, protein: 3.5, carbs: 20, fat: 3 },
+
+  // --- Fruit ---
+  { name: 'Apple', servingDesc: '1 medium', calories: 95, protein: 0.5, carbs: 25.1, fat: 0.3 },
+  { name: 'Banana', servingDesc: '1 medium', calories: 105, protein: 1.3, carbs: 27, fat: 0.4 },
+  { name: 'Orange', servingDesc: '1 medium', calories: 62, protein: 1.2, carbs: 15.4, fat: 0.2 },
+  { name: 'Strawberries', servingDesc: '1 cup', calories: 49, protein: 1, carbs: 11.7, fat: 0.5 },
+  { name: 'Blueberries', servingDesc: '1 cup', calories: 84, protein: 1.1, carbs: 21.4, fat: 0.5 },
+  { name: 'Grapes', servingDesc: '1 cup', calories: 104, protein: 1.1, carbs: 27.3, fat: 0.2 },
+  { name: 'Watermelon', servingDesc: '1 cup', calories: 46, protein: 0.9, carbs: 11.5, fat: 0.2 },
+  { name: 'Mango', servingDesc: '1 cup', calories: 99, protein: 1.4, carbs: 24.7, fat: 0.6 },
+  { name: 'Pineapple', servingDesc: '1 cup', calories: 82, protein: 0.9, carbs: 21.6, fat: 0.2 },
+  { name: 'Pear', servingDesc: '1 medium', calories: 101, protein: 0.6, carbs: 27.1, fat: 0.2 },
+  { name: 'Peach', servingDesc: '1 medium', calories: 58, protein: 1.4, carbs: 14, fat: 0.4 },
+  { name: 'Avocado', servingDesc: '1/2 medium', calories: 161, protein: 2, carbs: 8.6, fat: 14.7 },
+  { name: 'Dates, medjool', servingDesc: '1 date', calories: 66, protein: 0.4, carbs: 18, fat: 0 },
+
+  // --- Vegetables ---
+  { name: 'Broccoli, cooked', servingDesc: '1 cup', calories: 55, protein: 3.7, carbs: 11.2, fat: 0.6 },
+  { name: 'Spinach, raw', servingDesc: '1 cup', calories: 7, protein: 0.9, carbs: 1.1, fat: 0.1 },
+  { name: 'Carrot, raw', servingDesc: '1 medium', calories: 25, protein: 0.6, carbs: 5.8, fat: 0.1 },
+  { name: 'Bell pepper', servingDesc: '1 medium', calories: 24, protein: 1, carbs: 5.5, fat: 0.2 },
+  { name: 'Tomato', servingDesc: '1 medium', calories: 22, protein: 1.1, carbs: 4.8, fat: 0.2 },
+  { name: 'Cucumber, sliced', servingDesc: '1 cup', calories: 16, protein: 0.7, carbs: 3.8, fat: 0.1 },
+  { name: 'Onion', servingDesc: '1 medium', calories: 44, protein: 1.2, carbs: 10.3, fat: 0.1 },
+  { name: 'Romaine lettuce', servingDesc: '1 cup', calories: 8, protein: 0.6, carbs: 1.5, fat: 0.1 },
+  { name: 'Green beans, cooked', servingDesc: '1 cup', calories: 44, protein: 2.4, carbs: 9.9, fat: 0.4 },
+  { name: 'Corn, cooked', servingDesc: '1 cup', calories: 143, protein: 5.4, carbs: 31.3, fat: 2.2 },
+  { name: 'Mushrooms', servingDesc: '1 cup', calories: 15, protein: 2.2, carbs: 2.3, fat: 0.2 },
+  { name: 'Cauliflower', servingDesc: '1 cup', calories: 27, protein: 2.1, carbs: 5.3, fat: 0.3 },
+
+  // --- Nuts, seeds, fats ---
+  { name: 'Almonds', servingDesc: '1 oz (23 nuts)', calories: 164, protein: 6, carbs: 6.1, fat: 14.2 },
+  { name: 'Peanut butter', servingDesc: '2 tbsp', calories: 188, protein: 8, carbs: 6.9, fat: 16 },
+  { name: 'Peanuts', servingDesc: '1 oz', calories: 161, protein: 7.3, carbs: 4.6, fat: 14 },
+  { name: 'Walnuts', servingDesc: '1 oz', calories: 185, protein: 4.3, carbs: 3.9, fat: 18.5 },
+  { name: 'Cashews', servingDesc: '1 oz', calories: 157, protein: 5.2, carbs: 8.6, fat: 12.4 },
+  { name: 'Chia seeds', servingDesc: '1 oz', calories: 138, protein: 4.7, carbs: 12, fat: 8.7 },
+  { name: 'Olive oil', servingDesc: '1 tbsp', calories: 119, protein: 0, carbs: 0, fat: 13.5 },
+
+  // --- Snacks, sweets ---
+  { name: 'Potato chips', servingDesc: '1 oz', calories: 152, protein: 2, carbs: 15, fat: 10 },
+  { name: 'Chocolate chip cookie', servingDesc: '1 cookie', calories: 78, protein: 0.9, carbs: 10.3, fat: 3.9 },
+  { name: 'Dark chocolate', servingDesc: '1 oz', calories: 155, protein: 2, carbs: 17, fat: 9 },
+  { name: 'Ice cream, vanilla', servingDesc: '1/2 cup', calories: 137, protein: 2.3, carbs: 15.6, fat: 7.3 },
+  { name: 'Protein bar', servingDesc: '1 bar', calories: 200, protein: 20, carbs: 22, fat: 7 },
+  { name: 'Granola bar', servingDesc: '1 bar', calories: 132, protein: 2.9, carbs: 18.3, fat: 5.2 },
+  { name: 'Popcorn, air-popped', servingDesc: '1 cup', calories: 31, protein: 1, carbs: 6.2, fat: 0.4 },
+  { name: 'Donut, glazed', servingDesc: '1 donut', calories: 269, protein: 4, carbs: 31, fat: 15 },
+
+  // --- Drinks ---
+  { name: 'Coffee, black', servingDesc: '1 cup', calories: 2, protein: 0.3, carbs: 0, fat: 0 },
+  { name: 'Tea, unsweetened', servingDesc: '1 cup', calories: 2, protein: 0, carbs: 0.5, fat: 0 },
+  { name: 'Latte, whole milk', servingDesc: '12 oz', calories: 180, protein: 10, carbs: 15, fat: 9 },
+  { name: 'Orange juice', servingDesc: '1 cup', calories: 112, protein: 1.7, carbs: 25.8, fat: 0.5 },
+  { name: 'Coca-Cola', servingDesc: '12 oz can', calories: 140, protein: 0, carbs: 39, fat: 0 },
+  { name: 'Diet soda', servingDesc: '12 oz can', calories: 0, protein: 0, carbs: 0, fat: 0 },
+  { name: 'Beer, regular', servingDesc: '12 oz', calories: 153, protein: 1.6, carbs: 12.6, fat: 0 },
+  { name: 'Wine, red', servingDesc: '5 oz', calories: 125, protein: 0.1, carbs: 3.8, fat: 0 },
+  { name: 'Energy drink', servingDesc: '1 can', calories: 110, protein: 0, carbs: 28, fat: 0 },
+  { name: 'Whey protein shake', servingDesc: '1 scoop', calories: 120, protein: 24, carbs: 3, fat: 1.5 },
+
+  // --- Restaurant & takeaway ---
+  { name: 'Big Mac (McDonald’s)', servingDesc: '1 burger', calories: 563, protein: 26, carbs: 45, fat: 33 },
+  { name: 'McDonald’s fries, medium', servingDesc: '1 serving', calories: 320, protein: 5, carbs: 43, fat: 15 },
+  { name: 'McChicken', servingDesc: '1 sandwich', calories: 400, protein: 14, carbs: 39, fat: 21 },
+  { name: 'Chicken McNuggets', servingDesc: '6 pieces', calories: 250, protein: 14, carbs: 15, fat: 15 },
+  { name: 'Whopper (Burger King)', servingDesc: '1 burger', calories: 657, protein: 28, carbs: 49, fat: 40 },
+  { name: 'Subway turkey sub, 6 inch', servingDesc: '1 sub', calories: 280, protein: 18, carbs: 46, fat: 4 },
+  { name: 'Pizza, cheese', servingDesc: '1 slice', calories: 285, protein: 12.2, carbs: 35.7, fat: 10.4 },
+  { name: 'Pizza, pepperoni', servingDesc: '1 slice', calories: 313, protein: 13, carbs: 36, fat: 12 },
+  { name: 'Chicken burrito', servingDesc: '1 burrito', calories: 975, protein: 47, carbs: 106, fat: 37 },
+  { name: 'Chicken shawarma wrap', servingDesc: '1 wrap', calories: 550, protein: 30, carbs: 50, fat: 25 },
+  { name: 'Chicken biryani', servingDesc: '1 cup', calories: 290, protein: 15, carbs: 35, fat: 10 },
+  { name: 'Chicken curry', servingDesc: '1 cup', calories: 293, protein: 22, carbs: 10, fat: 19 },
+  { name: 'Samosa', servingDesc: '1 piece', calories: 262, protein: 3.5, carbs: 24, fat: 17 },
+  { name: 'Falafel', servingDesc: '3 pieces', calories: 170, protein: 6.8, carbs: 16, fat: 9 },
+  { name: 'Hummus', servingDesc: '2 tbsp', calories: 70, protein: 2, carbs: 6, fat: 5 },
+  { name: 'California roll', servingDesc: '6 pieces', calories: 255, protein: 9, carbs: 38, fat: 7 },
+
+  // --- Condiments & sweeteners ---
+  { name: 'Ketchup', servingDesc: '1 tbsp', calories: 17, protein: 0.2, carbs: 4.5, fat: 0 },
+  { name: 'Mayonnaise', servingDesc: '1 tbsp', calories: 94, protein: 0.1, carbs: 0.1, fat: 10.3 },
+  { name: 'Mustard', servingDesc: '1 tsp', calories: 3, protein: 0.2, carbs: 0.3, fat: 0.2 },
+  { name: 'Ranch dressing', servingDesc: '2 tbsp', calories: 129, protein: 0.4, carbs: 1.8, fat: 13.4 },
+  { name: 'Soy sauce', servingDesc: '1 tbsp', calories: 8, protein: 1.3, carbs: 0.8, fat: 0 },
+  { name: 'Honey', servingDesc: '1 tbsp', calories: 64, protein: 0.1, carbs: 17.3, fat: 0 },
+  { name: 'Sugar', servingDesc: '1 tsp', calories: 16, protein: 0, carbs: 4.2, fat: 0 },
+  { name: 'Maple syrup', servingDesc: '1 tbsp', calories: 52, protein: 0, carbs: 13.4, fat: 0 }
+];

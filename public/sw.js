@@ -8,6 +8,7 @@ const ASSETS = [
   './index.html',
   './app.js',
   './db.js',
+  './foods-db.js',
   './styles.css',
   './manifest.json',
   './icons/icon-192.png',
@@ -28,6 +29,10 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+
+  // Only the app's own files are cached. Food-search lookups go to another
+  // origin and must not be served from (or fill up) the app cache.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
 
   // Opening the app goes to the network first so a new version shows up as
   // soon as there is a connection, falling back to the cache when offline.

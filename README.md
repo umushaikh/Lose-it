@@ -11,12 +11,20 @@ there's no account, no server-side database, and no data leaves your phone.
 
 - **TDEE / calorie calculator** — enter sex, age, height, weight, and
   activity level to get your BMR, maintenance TDEE, and a daily calorie
-  budget for losing, maintaining, or gaining weight at a chosen rate
-  (0.5-2 lb/week). Includes protein/carb/fat targets from an adjustable
-  macro split.
+  budget for losing, maintaining, or gaining weight at a chosen rate.
+  Uses the Mifflin-St Jeor equation and the same six-level activity scale
+  as calculator.net, so the numbers line up with it. You can also enter a
+  custom daily calorie target to override the calculated budget entirely.
+  Includes protein/carb/fat targets from an adjustable macro split.
 - **Food diary** — log meals (breakfast/lunch/dinner/snacks) for any day,
   see calories and macros remaining against your budget, and log exercise
   to add calories back.
+- **Food search** — a built-in database of common whole foods, staples and
+  restaurant items (values from USDA FoodData Central plus published chain
+  figures), plus a "Search branded foods" lookup against
+  [Open Food Facts](https://world.openfoodfacts.org) for packaged and
+  branded products. Anything you log from either is saved to My Foods so
+  it's one tap away next time.
 - **My Foods** — save your own foods with calories and macros per serving,
   then log them with a quantity/serving multiplier, or quick-add a one-off
   item without saving it.
