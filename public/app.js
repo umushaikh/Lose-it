@@ -37,7 +37,9 @@ const state = {
   foodSearch: '',
   foodEditing: null, // { id? } while the add/edit food sheet is open
   searchResults: [], // online (branded) hits merged into the picker
-  visibleResults: [] // exactly what the picker last rendered, indexed by row
+  visibleResults: [], // exactly what the picker last rendered, indexed by row
+  visibleFoodRows: [], // same, for the Foods tab
+  logFoodTarget: null // food chosen from the Foods tab, awaiting meal + servings
 };
 
 // Tracks which units the settings form is currently displaying, independent of
@@ -276,24 +278,37 @@ function renderMacroBar(key, eaten, goal) {
   document.getElementById(`macro-${key}-label`).textContent = `${eaten}g / ${goal}g`;
 }
 
+// Lists your saved foods and the whole built-in database together, so the
+// database is visible by browsing rather than only turning up once you search.
 function renderFoods() {
   const q = state.foodSearch.trim().toLowerCase();
-  const list = state.foods.filter(f => !q || f.name.toLowerCase().includes(q));
+  const matches = f => !q || f.name.toLowerCase().includes(q);
+  const rows = [
+    ...state.foods.filter(matches).map(f => ({ ...f, source: 'mine' })),
+    ...FOOD_DB.filter(matches).map(f => ({ ...f, source: 'db' }))
+  ];
+  state.visibleFoodRows = rows;
+
+  document.getElementById('foods-count').textContent =
+    `${state.foods.length} saved · ${FOOD_DB.length} built-in`;
+
   const container = document.getElementById('foods-list');
-  container.innerHTML = list.length
-    ? list.map(f => `
-      <div class="food-row" data-food-id="${f.id}">
+  container.innerHTML = rows.length
+    ? rows.map((f, i) => `
+      <div class="food-row" data-idx="${i}">
         <div class="entry-info">
           <div class="entry-name">${escapeHtml(f.name)}</div>
-          <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}</div>
+          <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}
+            <span class="source-tag">${SOURCE_LABEL[f.source]}</span></div>
         </div>
         <div class="food-actions">
-          <button class="secondary-btn small log-food-btn" data-food-id="${f.id}">Log</button>
-          <button class="icon-btn small edit-food-btn" data-food-id="${f.id}" title="Edit">✎</button>
-          <button class="icon-btn small delete-food-btn" data-food-id="${f.id}" title="Delete">✕</button>
+          <button class="secondary-btn small log-food-btn" data-idx="${i}">Log</button>
+          ${f.source === 'mine' ? `
+            <button class="icon-btn small edit-food-btn" data-idx="${i}" title="Edit">✎</button>
+            <button class="icon-btn small delete-food-btn" data-idx="${i}" title="Delete">✕</button>` : ''}
         </div>
       </div>`).join('')
-    : `<div class="empty-hint">${state.foods.length ? 'No foods match your search' : 'No foods yet — add one below'}</div>`;
+    : `<div class="empty-hint">Nothing matches that. Tap + on a meal to search branded foods online.</div>`;
 }
 
 function renderWeight() {
@@ -505,13 +520,9 @@ function openAddEntryModal(meal) {
 // database. Online (branded) results are merged in when you ask for them.
 function localMatches(query) {
   const q = query.trim().toLowerCase();
-  if (!q) return state.foods.map(f => ({ ...f, source: 'mine' }));
-  const mine = state.foods
-    .filter(f => f.name.toLowerCase().includes(q))
-    .map(f => ({ ...f, source: 'mine' }));
-  const builtIn = FOOD_DB
-    .filter(f => f.name.toLowerCase().includes(q))
-    .map(f => ({ ...f, source: 'db' }));
+  const matches = f => !q || f.name.toLowerCase().includes(q);
+  const mine = state.foods.filter(matches).map(f => ({ ...f, source: 'mine' }));
+  const builtIn = FOOD_DB.filter(matches).map(f => ({ ...f, source: 'db' }));
   return [...mine, ...builtIn];
 }
 
@@ -521,9 +532,7 @@ function renderAddEntryFoodList(query) {
   const results = [...localMatches(query), ...state.searchResults];
   const container = document.getElementById('add-entry-food-list');
   if (!results.length) {
-    container.innerHTML = query.trim()
-      ? `<div class="empty-hint">No matches. Try “Search branded foods” below, or Quick Add.</div>`
-      : `<div class="empty-hint">Start typing to search foods, or use Quick Add.</div>`;
+    container.innerHTML = `<div class="empty-hint">No matches. Try “Search branded foods” below, or Quick Add.</div>`;
     return;
   }
   container.innerHTML = results.map((f, i) => `
@@ -593,8 +602,8 @@ function openFoodEditor(food) {
 }
 
 function openLogFoodModal(food) {
-  const modal = document.getElementById('log-food-modal');
-  modal.dataset.foodId = food.id;
+  // Held as an object rather than an id, since built-in foods aren't stored.
+  state.logFoodTarget = food;
   document.getElementById('log-food-title').textContent = `Log ${food.name}`;
   document.getElementById('log-food-qty').value = 1;
   document.getElementById('log-food-meal').value = 'breakfast';
@@ -740,14 +749,15 @@ function wireEvents() {
   });
   document.getElementById('new-food-btn').addEventListener('click', () => openFoodEditor(null));
   document.getElementById('foods-list').addEventListener('click', async e => {
-    const foodId = e.target.closest('[data-food-id]')?.dataset.foodId;
-    if (!foodId) return;
-    const food = state.foods.find(f => f.id === foodId);
+    const idx = e.target.closest('[data-idx]')?.dataset.idx;
+    if (idx == null) return;
+    const food = state.visibleFoodRows[Number(idx)];
+    if (!food) return;
     if (e.target.closest('.log-food-btn')) openLogFoodModal(food);
     else if (e.target.closest('.edit-food-btn')) openFoodEditor(food);
     else if (e.target.closest('.delete-food-btn')) {
       if (!confirm(`Delete "${food.name}"?`)) return;
-      await db.deleteFood(foodId);
+      await db.deleteFood(food.id);
       state.foods = await db.getFoods();
       renderFoods();
     }
@@ -772,14 +782,19 @@ function wireEvents() {
   });
   document.getElementById('log-food-form').addEventListener('submit', async e => {
     e.preventDefault();
-    const modal = document.getElementById('log-food-modal');
-    const food = state.foods.find(f => f.id === modal.dataset.foodId);
+    const food = state.logFoodTarget;
+    if (!food) return;
     const qty = Number(document.getElementById('log-food-qty').value) || 1;
     const meal = document.getElementById('log-food-meal').value;
     await db.addDiaryEntry(state.currentDate, meal, { ...food, qty });
+    const alreadySaved = state.foods.some(f => f.name.toLowerCase() === food.name.toLowerCase());
+    if (food.source !== 'mine' && !alreadySaved) {
+      await db.addFood(food);
+      state.foods = await db.getFoods();
+    }
     closeModal('log-food-modal');
     await loadDayData();
-    if (state.activeTab === 'today') render(); else renderFoods();
+    render();
   });
 
   // Weight tab
