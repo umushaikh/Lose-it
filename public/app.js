@@ -39,7 +39,14 @@ const state = {
   searchResults: [], // online (branded) hits merged into the picker
   visibleResults: [], // exactly what the picker last rendered, indexed by row
   visibleFoodRows: [], // same, for the Foods tab
-  logFoodTarget: null // food chosen from the Foods tab, awaiting meal + servings
+  logFoodTarget: null, // food chosen from the Foods tab, awaiting meal + servings
+  recipes: [],
+  recipeDraft: null, // recipe being built in the editor
+  recipePickerRows: [], // ingredient search results, indexed by row
+  confirmFood: null, // scanned or photographed food awaiting confirmation
+  pendingMeal: null, // meal the scan/photo was started from
+  scanStream: null, // live camera stream while scanning
+  scanTimer: null
 };
 
 // Tracks which units the settings form is currently displaying, independent of
@@ -183,6 +190,7 @@ async function refreshAll() {
   state.settings = await db.getSettings();
   state.foods = await db.getFoods();
   state.weightLog = await db.getWeightLog();
+  state.recipes = await db.getRecipes();
   await loadDayData();
   render();
 }
@@ -203,6 +211,7 @@ function render() {
 
   renderToday();
   renderFoods();
+  renderRecipes();
   renderWeight();
   populateSettingsForm();
 }
@@ -380,6 +389,7 @@ function populateSettingsForm() {
   form.carbsPct.value = s.macroSplit.carbsPct;
   form.fatPct.value = s.macroSplit.fatPct;
   form.calorieOverride.value = s.calorieOverride != null ? s.calorieOverride : '';
+  form.apiKey.value = s.apiKey || '';
 
   if (s.units === 'metric') {
     form.heightCm.value = Math.round(s.heightCm);
@@ -491,8 +501,124 @@ function readSettingsFromForm() {
       carbsPct: Number(form.carbsPct.value) || 0,
       fatPct: Number(form.fatPct.value) || 0
     },
-    calorieOverride: form.calorieOverride.value ? Number(form.calorieOverride.value) : null
+    calorieOverride: form.calorieOverride.value ? Number(form.calorieOverride.value) : null,
+    apiKey: form.apiKey.value.trim()
   };
+}
+
+// ---- Photo estimate ----
+// Shrinks the photo before upload: the API bills per visual token, and a 1024px
+// image is plenty to recognise a plate of food.
+function fileToScaledJpeg(file, maxEdge = 1024) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      resolve(dataUrl.split(',')[1]);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('That image could not be read.'));
+    };
+    img.src = url;
+  });
+}
+
+const PHOTO_PROMPT = `Identify the food in this photo and estimate the nutrition for the portion shown.
+Respond with ONLY a JSON object and no other text, in exactly this shape:
+{"name": "short food name", "serving": "the portion you see, e.g. 1 plate", "calories": 0, "protein": 0, "carbs": 0, "fat": 0, "confidence": "high|medium|low", "note": "one short sentence on what you assumed"}
+Calories are for the whole portion visible. Protein, carbs and fat are grams. If you cannot tell what the food is, set confidence to "low" and give your best guess anyway.`;
+
+async function estimateFromPhoto(base64Jpeg, apiKey) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      // Required for calling the API straight from a browser.
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-5',
+      max_tokens: 1024,
+      output_config: { effort: 'low' },
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64Jpeg } },
+          { type: 'text', text: PHOTO_PROMPT }
+        ]
+      }]
+    })
+  });
+
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    const message = detail && detail.error && detail.error.message ? detail.error.message : `HTTP ${res.status}`;
+    if (res.status === 401) throw new Error('That API key was rejected. Check it in Goals → Photo estimates.');
+    throw new Error(message);
+  }
+
+  const data = await res.json();
+  if (data.stop_reason === 'refusal') throw new Error('Claude declined to analyse that image.');
+  const textBlock = (data.content || []).find(b => b.type === 'text');
+  if (!textBlock) throw new Error('No estimate came back. Try another photo.');
+  return parseEstimate(textBlock.text);
+}
+
+// The model is asked for bare JSON, but tolerate it being wrapped in prose or a
+// code fence rather than failing the whole estimate.
+function parseEstimate(text) {
+  let raw = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error('Could not read the estimate. Try another photo.');
+  let parsed;
+  try {
+    parsed = JSON.parse(raw.slice(start, end + 1));
+  } catch {
+    throw new Error('Could not read the estimate. Try another photo.');
+  }
+  const num = v => Math.max(0, Math.round((Number(v) || 0) * 10) / 10);
+  return {
+    name: String(parsed.name || 'Photo estimate').slice(0, 80),
+    servingDesc: String(parsed.serving || '1 portion').slice(0, 60),
+    calories: Math.round(Number(parsed.calories) || 0),
+    protein: num(parsed.protein),
+    carbs: num(parsed.carbs),
+    fat: num(parsed.fat),
+    confidence: ['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'low',
+    note: String(parsed.note || '').slice(0, 200),
+    source: 'photo'
+  };
+}
+
+async function runPhotoEstimate(file) {
+  const status = document.getElementById('photo-status');
+  const key = (state.settings.apiKey || '').trim();
+  if (!key) {
+    status.textContent = 'Add an Anthropic API key under Goals → Photo estimates first.';
+    return;
+  }
+  status.textContent = 'Reading the photo…';
+  try {
+    const b64 = await fileToScaledJpeg(file);
+    status.textContent = 'Estimating calories…';
+    const estimate = await estimateFromPhoto(b64, key);
+    closeModal('photo-modal');
+    const confidenceNote = estimate.confidence === 'high' ? '' : ` (${estimate.confidence} confidence)`;
+    openConfirmFood(estimate, `Photo estimate${confidenceNote}. ${estimate.note}`);
+  } catch (err) {
+    status.textContent = err.message || 'That did not work. Try again.';
+  }
 }
 
 // ---- Modals ----
@@ -507,6 +633,7 @@ function openAddEntryModal(meal) {
   const modal = document.getElementById('add-entry-modal');
   modal.dataset.meal = meal;
   document.getElementById('add-entry-title').textContent = `Add to ${MEALS.find(m => m.key === meal).label}`;
+  state.pendingMeal = meal;
   document.getElementById('add-entry-search').value = '';
   document.getElementById('quick-add-form').reset();
   document.getElementById('add-entry-tab-search').click();
@@ -564,6 +691,124 @@ async function searchOnlineFoods(query) {
   return (data.products || []).map(mapOnlineProduct).filter(Boolean);
 }
 
+// ---- Barcode scanning ----
+// Looks a barcode up in Open Food Facts, which indexes packaged products by
+// their EAN/UPC - the same barcodes on supermarket packaging.
+async function lookupBarcode(code) {
+  const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`
+    + '?fields=product_name,brands,nutriments,serving_size';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Lookup failed.');
+  const data = await res.json();
+  if (!data || data.status !== 1 || !data.product) return null;
+  return mapOnlineProduct(data.product);
+}
+
+// Chrome on Android decodes barcodes natively; Safari has no BarcodeDetector,
+// so fall back to ZXing. Either way there is a manual-entry box that always works.
+async function getBarcodeReader() {
+  if ('BarcodeDetector' in window) {
+    try {
+      const formats = await window.BarcodeDetector.getSupportedFormats();
+      const wanted = ['ean_13', 'ean_8', 'upc_a', 'upc_e'].filter(f => formats.includes(f));
+      if (wanted.length) {
+        const detector = new window.BarcodeDetector({ formats: wanted });
+        return async video => {
+          const codes = await detector.detect(video);
+          return codes.length ? codes[0].rawValue : null;
+        };
+      }
+    } catch {
+      // fall through to ZXing
+    }
+  }
+  await loadZxing();
+  if (!window.ZXing) return null;
+  const reader = new window.ZXing.BrowserMultiFormatReader();
+  return async video => {
+    try {
+      const result = await reader.decodeFromVideoElement(video);
+      return result ? result.getText() : null;
+    } catch {
+      return null;
+    }
+  };
+}
+
+function loadZxing() {
+  if (window.ZXing) return Promise.resolve();
+  if (loadZxing.pending) return loadZxing.pending;
+  loadZxing.pending = new Promise(resolve => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+    script.onload = () => resolve();
+    script.onerror = () => resolve(); // caller falls back to manual entry
+    document.head.appendChild(script);
+  });
+  return loadZxing.pending;
+}
+
+async function startScanner() {
+  const status = document.getElementById('scan-status');
+  const video = document.getElementById('scan-video');
+  status.textContent = 'Starting camera…';
+  try {
+    state.scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } }
+    });
+  } catch {
+    status.textContent = 'No camera access. Type the barcode number below instead.';
+    return;
+  }
+  video.srcObject = state.scanStream;
+  video.setAttribute('playsinline', 'true');
+  await video.play().catch(() => {});
+
+  const read = await getBarcodeReader();
+  if (!read) {
+    status.textContent = 'Scanning is not supported on this browser. Type the barcode below instead.';
+    return;
+  }
+  status.textContent = 'Point the camera at the barcode…';
+  state.scanTimer = setInterval(async () => {
+    let code = null;
+    try {
+      code = await read(video);
+    } catch {
+      return;
+    }
+    if (code) {
+      stopScanner();
+      await handleBarcode(code);
+    }
+  }, 400);
+}
+
+function stopScanner() {
+  if (state.scanTimer) clearInterval(state.scanTimer);
+  state.scanTimer = null;
+  if (state.scanStream) state.scanStream.getTracks().forEach(t => t.stop());
+  state.scanStream = null;
+}
+
+async function handleBarcode(code) {
+  const status = document.getElementById('scan-status');
+  status.textContent = `Looking up ${code}…`;
+  let food;
+  try {
+    food = await lookupBarcode(code);
+  } catch {
+    status.textContent = 'Could not reach the food database — check your connection.';
+    return;
+  }
+  if (!food) {
+    status.textContent = `No product found for ${code}. Try Quick Add instead.`;
+    return;
+  }
+  closeModal('scan-modal');
+  openConfirmFood(food, `Scanned: ${code}`);
+}
+
 function mapOnlineProduct(p) {
   if (!p.product_name) return null;
   const n = p.nutriments || {};
@@ -583,6 +828,119 @@ function mapOnlineProduct(p) {
     fat: round(perServing ? n.fat_serving : n.fat_100g),
     source: 'online'
   };
+}
+
+// Shared review step for anything the app worked out for you - a scanned
+// product or a photo estimate - so nothing is logged without a look first.
+function openConfirmFood(food, note) {
+  state.confirmFood = food;
+  document.getElementById('confirm-food-title').textContent = food.name;
+  document.getElementById('confirm-food-note').textContent = note || '';
+  const form = document.getElementById('confirm-food-form');
+  form.calories.value = food.calories;
+  form.protein.value = food.protein;
+  form.carbs.value = food.carbs;
+  form.fat.value = food.fat;
+  form.servingDesc.value = food.servingDesc;
+  document.getElementById('confirm-food-qty').value = 1;
+  document.getElementById('confirm-food-meal').value = state.pendingMeal || 'breakfast';
+  openModal('confirm-food-modal');
+}
+
+// ---- Recipes ----
+function recipeTotals(recipe) {
+  const totals = recipe.ingredients.reduce((acc, i) => ({
+    calories: acc.calories + i.calories * i.qty,
+    protein: acc.protein + i.protein * i.qty,
+    carbs: acc.carbs + i.carbs * i.qty,
+    fat: acc.fat + i.fat * i.qty
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const servings = Math.max(recipe.servings || 1, 0.25);
+  return {
+    total: totals,
+    perServing: {
+      calories: Math.round(totals.calories / servings),
+      protein: Math.round((totals.protein / servings) * 10) / 10,
+      carbs: Math.round((totals.carbs / servings) * 10) / 10,
+      fat: Math.round((totals.fat / servings) * 10) / 10
+    }
+  };
+}
+
+function renderRecipes() {
+  const container = document.getElementById('recipes-list');
+  container.innerHTML = state.recipes.length
+    ? state.recipes.map(r => {
+      const { perServing } = recipeTotals(r);
+      return `
+        <div class="food-row" data-recipe-id="${r.id}">
+          <div class="entry-info">
+            <div class="entry-name">${escapeHtml(r.name)}</div>
+            <div class="entry-sub">${r.ingredients.length} ingredient${r.ingredients.length === 1 ? '' : 's'} ·
+              makes ${r.servings} · ${perServing.calories} cal/serving ·
+              P${perServing.protein} C${perServing.carbs} F${perServing.fat}</div>
+          </div>
+          <div class="food-actions">
+            <button class="secondary-btn small log-recipe-btn" data-recipe-id="${r.id}">Log</button>
+            <button class="icon-btn small edit-recipe-btn" data-recipe-id="${r.id}" title="Edit">✎</button>
+            <button class="icon-btn small delete-recipe-btn" data-recipe-id="${r.id}" title="Delete">✕</button>
+          </div>
+        </div>`;
+    }).join('')
+    : `<div class="empty-hint">No recipes yet. Build one from your foods and it logs by the serving.</div>`;
+}
+
+function openRecipeEditor(recipe) {
+  state.recipeDraft = recipe
+    ? { id: recipe.id, name: recipe.name, servings: recipe.servings, ingredients: [...recipe.ingredients] }
+    : { name: '', servings: 1, ingredients: [] };
+  document.getElementById('recipe-editor-title').textContent = recipe ? 'Edit Recipe' : 'New Recipe';
+  const form = document.getElementById('recipe-form');
+  form.name.value = state.recipeDraft.name;
+  form.servings.value = state.recipeDraft.servings;
+  document.getElementById('recipe-ingredient-search').value = '';
+  renderRecipeDraft();
+  renderRecipeIngredientPicker('');
+  openModal('recipe-editor-modal');
+}
+
+function renderRecipeDraft() {
+  const draft = state.recipeDraft;
+  const list = document.getElementById('recipe-ingredients');
+  list.innerHTML = draft.ingredients.length
+    ? draft.ingredients.map((i, idx) => `
+      <div class="entry-row">
+        <div class="entry-info">
+          <div class="entry-name">${escapeHtml(i.name)}</div>
+          <div class="entry-sub">${i.qty !== 1 ? `${i.qty}× · ` : ''}${Math.round(i.calories * i.qty)} cal</div>
+        </div>
+        <button type="button" class="icon-btn small remove-ingredient-btn" data-idx="${idx}" title="Remove">✕</button>
+      </div>`).join('')
+    : `<div class="empty-hint">No ingredients yet — search below to add them.</div>`;
+
+  const servings = Math.max(Number(document.getElementById('recipe-form').servings.value) || 1, 0.25);
+  const { perServing } = recipeTotals({ ingredients: draft.ingredients, servings });
+  document.getElementById('recipe-per-serving').textContent =
+    `${perServing.calories} cal · P${perServing.protein} C${perServing.carbs} F${perServing.fat} per serving`;
+}
+
+function renderRecipeIngredientPicker(query) {
+  const results = localMatches(query).slice(0, 40);
+  const container = document.getElementById('recipe-ingredient-list');
+  state.recipePickerRows = results;
+  container.innerHTML = results.length
+    ? results.map((f, i) => `
+      <div class="food-row pick-row">
+        <div class="entry-info">
+          <div class="entry-name">${escapeHtml(f.name)}</div>
+          <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal</div>
+        </div>
+        <div class="qty-picker">
+          <input type="number" class="qty-input" min="0.25" step="0.25" value="1" data-ing-qty="${i}" />
+          <button type="button" class="primary-btn small add-ingredient-btn" data-idx="${i}">Add</button>
+        </div>
+      </div>`).join('')
+    : `<div class="empty-hint">No matches.</div>`;
 }
 
 function openFoodEditor(food) {
@@ -740,6 +1098,142 @@ function wireEvents() {
     closeModal('add-entry-modal');
     await loadDayData();
     render();
+  });
+
+  // Foods / Recipes toggle
+  document.querySelectorAll('.seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const showRecipes = btn.dataset.section === 'recipes';
+      document.getElementById('seg-foods').classList.toggle('active', !showRecipes);
+      document.getElementById('seg-recipes').classList.toggle('active', showRecipes);
+      document.getElementById('foods-section').classList.toggle('hidden', showRecipes);
+      document.getElementById('recipes-section').classList.toggle('hidden', !showRecipes);
+    });
+  });
+
+  // Barcode scanning
+  document.getElementById('scan-btn').addEventListener('click', async () => {
+    document.getElementById('manual-barcode').value = '';
+    openModal('scan-modal');
+    await startScanner();
+  });
+  document.getElementById('manual-barcode-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const code = document.getElementById('manual-barcode').value.trim();
+    if (code) await handleBarcode(code);
+  });
+  document.querySelectorAll('[data-close-modal="scan-modal"]').forEach(el => {
+    el.addEventListener('click', () => stopScanner());
+  });
+
+  // Photo estimate
+  document.getElementById('photo-btn').addEventListener('click', () => {
+    document.getElementById('photo-status').textContent = state.settings.apiKey
+      ? 'Take or choose a photo of your food.'
+      : 'Add an Anthropic API key under Goals → Photo estimates to use this.';
+    document.getElementById('photo-input').value = '';
+    openModal('photo-modal');
+  });
+  document.getElementById('photo-input').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (file) await runPhotoEstimate(file);
+  });
+
+  // Confirm sheet shared by scanning and photo estimates
+  document.getElementById('confirm-food-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const form = e.target;
+    const qty = Number(document.getElementById('confirm-food-qty').value) || 1;
+    const meal = document.getElementById('confirm-food-meal').value;
+    const food = {
+      name: state.confirmFood.name,
+      servingDesc: form.servingDesc.value.trim() || '1 serving',
+      calories: Number(form.calories.value) || 0,
+      protein: Number(form.protein.value) || 0,
+      carbs: Number(form.carbs.value) || 0,
+      fat: Number(form.fat.value) || 0
+    };
+    await db.addDiaryEntry(state.currentDate, meal, { ...food, qty });
+    const alreadySaved = state.foods.some(f => f.name.toLowerCase() === food.name.toLowerCase());
+    if (!alreadySaved) {
+      await db.addFood(food);
+      state.foods = await db.getFoods();
+    }
+    closeModal('confirm-food-modal');
+    closeModal('add-entry-modal');
+    await loadDayData();
+    render();
+  });
+
+  // Recipes
+  document.getElementById('new-recipe-btn').addEventListener('click', () => openRecipeEditor(null));
+  document.getElementById('recipes-list').addEventListener('click', async e => {
+    const id = e.target.closest('[data-recipe-id]')?.dataset.recipeId;
+    if (!id) return;
+    const recipe = state.recipes.find(r => r.id === id);
+    if (!recipe) return;
+    if (e.target.closest('.log-recipe-btn')) {
+      const { perServing } = recipeTotals(recipe);
+      openLogFoodModal({
+        name: recipe.name,
+        servingDesc: '1 serving',
+        ...perServing,
+        source: 'recipe'
+      });
+    } else if (e.target.closest('.edit-recipe-btn')) {
+      openRecipeEditor(recipe);
+    } else if (e.target.closest('.delete-recipe-btn')) {
+      if (!confirm(`Delete "${recipe.name}"?`)) return;
+      await db.deleteRecipe(id);
+      state.recipes = await db.getRecipes();
+      renderRecipes();
+    }
+  });
+  document.getElementById('recipe-ingredient-search').addEventListener('input', e =>
+    renderRecipeIngredientPicker(e.target.value));
+  document.getElementById('recipe-ingredient-list').addEventListener('click', e => {
+    const btn = e.target.closest('.add-ingredient-btn');
+    if (!btn) return;
+    const food = state.recipePickerRows[Number(btn.dataset.idx)];
+    if (!food) return;
+    const qtyInput = document.querySelector(`[data-ing-qty="${btn.dataset.idx}"]`);
+    state.recipeDraft.ingredients.push({
+      name: food.name,
+      qty: Number(qtyInput.value) || 1,
+      calories: food.calories,
+      protein: food.protein,
+      carbs: food.carbs,
+      fat: food.fat
+    });
+    renderRecipeDraft();
+  });
+  document.getElementById('recipe-ingredients').addEventListener('click', e => {
+    const btn = e.target.closest('.remove-ingredient-btn');
+    if (!btn) return;
+    state.recipeDraft.ingredients.splice(Number(btn.dataset.idx), 1);
+    renderRecipeDraft();
+  });
+  document.getElementById('recipe-form').addEventListener('input', e => {
+    if (e.target.name === 'servings') renderRecipeDraft();
+  });
+  document.getElementById('recipe-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const form = e.target;
+    if (!state.recipeDraft.ingredients.length) {
+      alert('Add at least one ingredient first.');
+      return;
+    }
+    const payload = {
+      name: form.name.value.trim() || 'Recipe',
+      servings: Math.max(Number(form.servings.value) || 1, 0.25),
+      ingredients: state.recipeDraft.ingredients
+    };
+    if (state.recipeDraft.id) await db.updateRecipe(state.recipeDraft.id, payload);
+    else await db.addRecipe(payload);
+    state.recipeDraft = null;
+    closeModal('recipe-editor-modal');
+    state.recipes = await db.getRecipes();
+    renderRecipes();
   });
 
   // Foods tab

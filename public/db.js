@@ -17,7 +17,8 @@ function defaultSettings() {
     goal: 'lose', // 'lose' | 'maintain' | 'gain'
     rateLbPerWeek: 1,
     macroSplit: { proteinPct: 30, carbsPct: 40, fatPct: 30 },
-    calorieOverride: null // if set, overrides the computed budget
+    calorieOverride: null, // if set, overrides the computed budget
+    apiKey: '' // optional Anthropic key for photo estimates; stays on this device
   };
 }
 
@@ -31,6 +32,7 @@ function loadDb() {
       if (!parsed.diary) parsed.diary = {};
       if (!parsed.exercise) parsed.exercise = {};
       if (!parsed.weightLog) parsed.weightLog = [];
+      if (!parsed.recipes) parsed.recipes = [];
       return parsed;
     } catch {
       // fall through and reseed a fresh db below
@@ -41,7 +43,8 @@ function loadDb() {
     foods: [],
     diary: {},
     exercise: {},
-    weightLog: []
+    weightLog: [],
+    recipes: []
   };
   saveDb(seeded);
   return seeded;
@@ -199,21 +202,88 @@ const db = {
     return true;
   },
 
+  async getRecipes() {
+    return [...loadDb().recipes].sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  // Ingredient totals are divided by the serving count, so a recipe logs like
+  // any other food: one serving at a time.
+  async addRecipe({ name, servings, ingredients }) {
+    const store = loadDb();
+    const recipe = {
+      id: uid(),
+      name: (name || '').trim() || 'Recipe',
+      servings: Math.max(Number(servings) || 1, 0.25),
+      ingredients: (ingredients || []).map(i => ({
+        name: i.name,
+        qty: Number(i.qty) || 1,
+        calories: Number(i.calories) || 0,
+        protein: Number(i.protein) || 0,
+        carbs: Number(i.carbs) || 0,
+        fat: Number(i.fat) || 0
+      }))
+    };
+    store.recipes.push(recipe);
+    saveDb(store);
+    return recipe;
+  },
+
+  async updateRecipe(recipeId, patch) {
+    const store = loadDb();
+    const recipe = store.recipes.find(r => r.id === recipeId);
+    if (!recipe) return null;
+    Object.assign(recipe, patch);
+    saveDb(store);
+    return recipe;
+  },
+
+  async deleteRecipe(recipeId) {
+    const store = loadDb();
+    const before = store.recipes.length;
+    store.recipes = store.recipes.filter(r => r.id !== recipeId);
+    if (store.recipes.length === before) return false;
+    saveDb(store);
+    return true;
+  },
+
   async exportData() {
     const store = loadDb();
-    return { app: 'calorie-counter', version: 1, exportedAt: new Date().toISOString(), ...store };
+    // The API key is a credential, not diary data - keep it out of a file the
+    // user might send to themselves over email or store in the cloud.
+    const { apiKey, ...settings } = store.settings;
+    return {
+      app: 'calorie-counter',
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      ...store,
+      settings
+    };
   },
 
   async importData(payload) {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new Error('That file is not a Calorie Counter backup.');
     }
-    const { settings, foods, diary, exercise, weightLog } = payload;
+    const { settings, foods, diary, exercise, weightLog, recipes } = payload;
     if (!settings || !Array.isArray(foods) || !diary || typeof diary !== 'object' || !Array.isArray(weightLog)) {
       throw new Error('That file is missing calorie data, so it is not a Calorie Counter backup.');
     }
-    saveDb({ settings, foods, diary, exercise: exercise || {}, weightLog });
-    return { foods: foods.length, days: Object.keys(diary).length, weightEntries: weightLog.length };
+    // A backup carries no API key, so keep the one already on this device.
+    const existingKey = loadDb().settings.apiKey;
+    saveDb({
+      settings: { ...settings, apiKey: settings.apiKey || existingKey || '' },
+      foods,
+      diary,
+      exercise: exercise || {},
+      weightLog,
+      recipes: Array.isArray(recipes) ? recipes : []
+    });
+    return {
+      foods: foods.length,
+      days: Object.keys(diary).length,
+      weightEntries: weightLog.length,
+      recipes: Array.isArray(recipes) ? recipes.length : 0
+    };
   }
 };
 

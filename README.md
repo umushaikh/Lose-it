@@ -19,12 +19,25 @@ there's no account, no server-side database, and no data leaves your phone.
 - **Food diary** — log meals (breakfast/lunch/dinner/snacks) for any day,
   see calories and macros remaining against your budget, and log exercise
   to add calories back.
-- **Food search** — a built-in database of common whole foods, staples and
-  restaurant items (values from USDA FoodData Central plus published chain
-  figures), plus a "Search branded foods" lookup against
+- **Food search** — a built-in database of 300+ common whole foods, staples,
+  South Asian, Middle Eastern and Asian dishes, and restaurant items (values
+  from USDA FoodData Central plus published chain figures), plus a "Search
+  branded foods" lookup against
   [Open Food Facts](https://world.openfoodfacts.org) for packaged and
   branded products. Anything you log from either is saved to My Foods so
   it's one tap away next time.
+- **Barcode scanning** — point the camera at a packaged product's barcode and
+  it's looked up in Open Food Facts. Uses the browser's native barcode
+  detector where available (Chrome/Android) and falls back to ZXing
+  elsewhere; there's always a manual box for typing the number.
+- **Photo estimates** (optional) — photograph a meal and get an estimated
+  name, calories and macros to review before logging. This needs your own
+  Anthropic API key, entered under Goals; it's stored on your device only,
+  kept out of backups, and costs roughly a penny a photo on your account.
+  Portion size is genuinely hard to judge from a photo, so treat the numbers
+  as a starting point and correct them on the confirm screen.
+- **Recipes** — build a recipe from its ingredients, say how many servings it
+  makes, and it logs by the serving like any other food.
 - **My Foods** — save your own foods with calories and macros per serving,
   then log them with a quantity/serving multiplier, or quick-add a one-off
   item without saving it.
