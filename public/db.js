@@ -23,6 +23,22 @@ function defaultSettings() {
   };
 }
 
+// Membership of a shared board. Empty by default: with no serverUrl the app
+// never contacts anything, which is how it has always worked and stays the
+// behaviour for anyone who doesn't want a group.
+function defaultGroup() {
+  return {
+    serverUrl: '',
+    groupId: '',
+    groupName: '',
+    joinCode: '',
+    memberId: '',
+    memberName: '',
+    token: '',
+    shareWeighIns: true
+  };
+}
+
 function loadDb() {
   const raw = localStorage.getItem(DB_KEY);
   if (raw) {
@@ -34,6 +50,8 @@ function loadDb() {
       if (!parsed.exercise) parsed.exercise = {};
       if (!parsed.weightLog) parsed.weightLog = [];
       if (!parsed.recipes) parsed.recipes = [];
+      if (!parsed.group) parsed.group = defaultGroup();
+      if (!Array.isArray(parsed.outbox)) parsed.outbox = [];
       return parsed;
     } catch {
       // fall through and reseed a fresh db below
@@ -264,16 +282,69 @@ const db = {
     return true;
   },
 
+  // ---- shared board ----
+
+  async getGroup() {
+    return { ...defaultGroup(), ...(loadDb().group || {}) };
+  },
+
+  async saveGroup(patch) {
+    const store = loadDb();
+    store.group = { ...defaultGroup(), ...(store.group || {}), ...patch };
+    saveDb(store);
+    return store.group;
+  },
+
+  async clearGroup() {
+    const store = loadDb();
+    // Keep the server URL: leaving one group and joining another shouldn't
+    // mean typing the address back in.
+    const serverUrl = (store.group || {}).serverUrl || '';
+    store.group = { ...defaultGroup(), serverUrl };
+    store.outbox = [];
+    saveDb(store);
+    return store.group;
+  },
+
+  // Writes that could not be delivered. The app is offline-first, so a day
+  // logged on the metro has to survive until there is a connection again.
+  async getOutbox() {
+    return loadDb().outbox || [];
+  },
+
+  // Day updates supersede each other, so only the newest per date is kept and
+  // a week offline still flushes as a handful of requests.
+  async queueOutbox(item) {
+    const store = loadDb();
+    const outbox = (store.outbox || []).filter(
+      q => !(q.kind === 'day' && item.kind === 'day' && q.body.date === item.body.date)
+    );
+    outbox.push({ ...item, id: uid(), queuedAt: Date.now() });
+    store.outbox = outbox.slice(-100);
+    saveDb(store);
+    return store.outbox;
+  },
+
+  async dropOutbox(ids) {
+    const store = loadDb();
+    const drop = new Set(ids);
+    store.outbox = (store.outbox || []).filter(q => !drop.has(q.id));
+    saveDb(store);
+    return store.outbox;
+  },
+
   async exportData() {
     const store = loadDb();
     // The API key is a credential, not diary data - keep it out of a file the
-    // user might send to themselves over email or store in the cloud.
+    // user might send to themselves over email or store in the cloud. The group
+    // token is the same kind of thing, and the outbox is transient.
     const { apiKey, ...settings } = store.settings;
+    const { group, outbox, ...rest } = store;
     return {
       app: 'calorie-counter',
       version: 2,
       exportedAt: new Date().toISOString(),
-      ...store,
+      ...rest,
       settings
     };
   },
@@ -287,14 +358,18 @@ const db = {
       throw new Error('That file is missing calorie data, so it is not a Calorie Counter backup.');
     }
     // A backup carries no API key, so keep the one already on this device.
-    const existingKey = loadDb().settings.apiKey;
+    const current = loadDb();
+    const existingKey = current.settings.apiKey;
     saveDb({
       settings: { ...settings, apiKey: settings.apiKey || existingKey || '' },
       foods,
       diary,
       exercise: exercise || {},
       weightLog,
-      recipes: Array.isArray(recipes) ? recipes : []
+      recipes: Array.isArray(recipes) ? recipes : [],
+      // Restoring a backup shouldn't kick this device out of its group.
+      group: current.group || defaultGroup(),
+      outbox: current.outbox || []
     });
     return {
       foods: foods.length,

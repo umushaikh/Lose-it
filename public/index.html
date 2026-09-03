@@ -159,6 +159,60 @@
       <div id="weight-list" class="list"></div>
     </section>
 
+    <section id="tab-friends" class="tab-panel">
+      <h2 class="panel-title">Friends</h2>
+
+      <!-- Shown until this device has joined a group. -->
+      <div id="friends-setup">
+        <p class="panel-lede">See how everyone's day is going, and share the odd
+          photo. Your food diary stays on your phone — only a daily summary and
+          whatever you choose to post is shared.</p>
+        <label class="field">Server address
+          <input id="friends-server" class="text-input" type="url" inputmode="url"
+                 autocapitalize="off" autocorrect="off" spellcheck="false"
+                 placeholder="https://....workers.dev" />
+          <p class="field-hint">Whoever set the group up has this. It's the URL
+            printed by <code>npm run api:deploy</code>.</p>
+        </label>
+        <label class="field">Your name
+          <input id="friends-name" class="text-input" type="text" maxlength="40" placeholder="What your friends call you" />
+        </label>
+        <div class="friends-setup-actions">
+          <button type="button" id="friends-create-btn" class="primary-btn full">Start a new group</button>
+          <div class="or-rule"><span>or</span></div>
+          <label class="field">Join code
+            <input id="friends-code" class="text-input" type="text" maxlength="8"
+                   autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="ABC123" />
+          </label>
+          <button type="button" id="friends-join-btn" class="secondary-btn full">Join with this code</button>
+        </div>
+        <div id="friends-setup-status" class="search-status"></div>
+      </div>
+
+      <!-- Shown once joined. -->
+      <div id="friends-board" class="hidden">
+        <div class="friends-head">
+          <div>
+            <div id="friends-group-name" class="friends-group-name"></div>
+            <div id="friends-sync-state" class="friends-sync-state"></div>
+          </div>
+          <button type="button" id="friends-refresh-btn" class="icon-btn" title="Refresh">⟳</button>
+        </div>
+
+        <div id="friends-members" class="list"></div>
+
+        <div class="friends-feed-head">
+          <h3>Feed</h3>
+          <button type="button" id="friends-photo-btn" class="secondary-btn hidden">📷 Share a photo</button>
+        </div>
+        <div id="friends-feed" class="list"></div>
+
+        <button type="button" id="friends-invite-btn" class="secondary-btn full">Invite a friend</button>
+        <button type="button" id="friends-leave-btn" class="danger-btn full">Leave this group</button>
+      </div>
+      <input id="friends-photo-input" type="file" accept="image/*" class="hidden" />
+    </section>
+
     <section id="tab-settings" class="tab-panel">
       <h2 class="panel-title">Goals &amp; TDEE Calculator</h2>
       <form id="settings-form">
@@ -275,6 +329,7 @@
     <button data-tab="today"><span class="tab-icon">🍽️</span>Today</button>
     <button data-tab="foods"><span class="tab-icon">📋</span>Foods</button>
     <button data-tab="weight"><span class="tab-icon">⚖️</span>Weight</button>
+    <button data-tab="friends"><span class="tab-icon">👥</span>Friends</button>
     <button data-tab="settings"><span class="tab-icon">🎯</span>Goals</button>
   </nav>
 </div>
@@ -314,6 +369,28 @@
         <button type="submit" class="primary-btn full">Add</button>
       </form>
     </div>
+  </div>
+</div>
+
+<!-- Invite a friend -->
+<div id="invite-modal" class="modal hidden" data-close-modal="invite-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3>Invite a friend</h3>
+      <button class="icon-btn" data-close-modal="invite-modal">✕</button>
+    </div>
+    <p class="modal-lede">They install the app, open Friends, and enter these two things.</p>
+    <div class="invite-field">
+      <label>Server address</label>
+      <div id="invite-server" class="invite-value"></div>
+    </div>
+    <div class="invite-field">
+      <label>Join code</label>
+      <div id="invite-code" class="invite-value invite-code"></div>
+    </div>
+    <button type="button" id="invite-copy-btn" class="primary-btn full">Copy both</button>
+    <p class="field-hint">Anyone with these can see the group and post to it, so
+      send them the way you would a house key.</p>
   </div>
 </div>
 
@@ -581,6 +658,7 @@
 
 <script src="db.js"></script>
 <script src="foods-db.js"></script>
+<script src="groups.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

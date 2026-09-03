@@ -4,8 +4,11 @@ A personal calorie counter and TDEE calculator, in the spirit of Lose It:
 log food against a daily budget, track macros, log weigh-ins, and compute
 your BMR/TDEE and calorie target from your stats and goal.
 
-Everything is stored only in the browser on your device (`localStorage`) —
-there's no account, no server-side database, and no data leaves your phone.
+Everything is stored in the browser on your device (`localStorage`) — no
+account, and by default no data leaves your phone. The one exception is opt-in:
+if you join a group of friends (see **Friends**), a daily summary and whatever
+you deliberately post are shared with that group. Your food diary itself never
+is.
 
 ## Features
 
@@ -54,7 +57,15 @@ there's no account, no server-side database, and no data leaves your phone.
   item without saving it.
 - **Weight tracking** — log weigh-ins, see your trend chart and progress
   toward a goal weight.
-- **Backup & restore** — export/import your data as a JSON file.
+- **Friends** — an optional shared board. Everyone in a group sees how each
+  person's day is going against their own budget, who has room left and who is
+  over, plus a feed of shared meal photos and weigh-ins. It needs a server, and
+  there's a free one included: `npm run api:setup && npm run api:deploy` puts a
+  Cloudflare Worker and a D1 database on your own Cloudflare account, which
+  costs nothing at this size. See `api/README.md`. Without it the app behaves
+  exactly as it always has.
+- **Backup & restore** — export/import your data as a JSON file. API keys and
+  group credentials are deliberately left out of the file.
 - **Dark by default** — an OLED-black theme with rounded cards, an open-bottom
   calorie gauge that turns red once you're over, and per-meal calorie
   suggestions (20% breakfast / 25% lunch / 35% dinner / 20% snacks). Under
@@ -85,3 +96,26 @@ This is a Progressive Web App: no app store needed.
    (or "Add to Home Screen").
 
 It then runs full-screen like a native app and works offline.
+
+## Sharing it with friends
+
+The app is useful on its own with no server at all, and that stays the default.
+If you want a shared board, one person deploys the included Worker once:
+
+```
+npm run api:setup     # creates the D1 database on your Cloudflare account
+npm run api:deploy    # publishes the Worker and prints its URL
+```
+
+Then in the app: **Friends → paste the URL → Start a new group**. It hands back
+a six-character join code. Everyone else installs the app, opens Friends, and
+enters the same URL plus that code.
+
+What gets shared is a summary — calories eaten against budget, macros, and how
+many items were logged — not the diary itself. Numbers update as people log,
+not once a day: each person's day is a single row that gets overwritten, which
+is why logging all day costs no more than logging once. Writes made offline are
+queued on the phone and delivered when there's a connection.
+
+Photo sharing is off until you bind an R2 bucket; `api/README.md` covers that,
+and what the join code does and does not protect.

@@ -627,3 +627,163 @@ body.modal-open { overflow: hidden; }
 @media (min-width: 480px) {
   .content { padding-left: 22px; padding-right: 22px; }
 }
+
+/* ---- Friends: the shared board ---- */
+
+.panel-lede {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 18px;
+}
+
+.friends-setup-actions { margin-top: 4px; }
+
+/* A labelled rule, so "start a group" and "join one" read as alternatives
+   rather than as a sequence of steps. */
+.or-rule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.or-rule::before,
+.or-rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.friends-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.friends-group-name { font-size: 20px; font-weight: 700; }
+.friends-sync-state { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.friends-sync-state.warn { color: var(--warn-text); }
+
+.friend-row {
+  background: var(--card);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.friend-row.quiet { opacity: 0.55; }
+
+.friend-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.friend-name { font-weight: 600; min-width: 0; }
+.friend-you {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--r-pill);
+  padding: 2px 7px;
+  margin-left: 4px;
+}
+.friend-status { font-size: 13px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+.friend-status.over { color: var(--danger); }
+
+.friend-track {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--track);
+  overflow: hidden;
+}
+.friend-fill {
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.friend-fill.over { background: var(--danger); }
+.friend-sub { font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+
+.friends-feed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 24px 0 12px;
+}
+.friends-feed-head h3 { margin: 0; font-size: 17px; }
+.friends-feed-head .secondary-btn { width: auto; padding: 8px 14px; font-size: 13px; }
+
+.feed-item {
+  background: var(--card);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.feed-item.slim { padding: 12px 16px; }
+.feed-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.feed-head strong { color: var(--text); }
+.feed-line { font-size: 14px; }
+.feed-text { font-size: 14px; margin-bottom: 10px; }
+.feed-meta { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+.feed-photo {
+  display: block;
+  width: 100%;
+  border-radius: var(--r-md);
+  background: var(--card-2);
+}
+
+.danger-btn {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 13px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal-lede { color: var(--text-dim); font-size: 14px; margin: 0 0 16px; line-height: 1.5; }
+.invite-field { margin-bottom: 14px; }
+.invite-field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.invite-value {
+  background: var(--card-2);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  word-break: break-all;
+}
+.invite-code {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-align: center;
+  color: var(--accent);
+}
+
+/* Five tabs rather than four: shrink the labels so nothing wraps at 360px. */
+.tabbar button { font-size: 10.5px; }
+.tabbar .tab-icon { font-size: 19px; }

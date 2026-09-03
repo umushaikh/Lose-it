@@ -4,9 +4,16 @@
   "description": "Personal calorie counter and TDEE calculator: log food, track weight, hit your goal",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "api:setup": "bash scripts/api-setup.sh",
+    "api:deploy": "npx wrangler deploy --config api/wrangler.toml",
+    "api:dev": "npx wrangler dev --local --config api/wrangler.toml --port 8787",
+    "api:schema:local": "npx wrangler d1 execute calorie-counter-groups --local --config api/wrangler.toml --file=api/schema.sql -y"
   },
   "dependencies": {
     "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
   }
 }

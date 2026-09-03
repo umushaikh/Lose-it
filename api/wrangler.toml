@@ -1,0 +1,17 @@
+name = "calorie-counter-groups"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# Filled in by `npm run api:setup`, which creates the database and prints the id.
+[[d1_databases]]
+binding = "DB"
+database_name = "calorie-counter-groups"
+database_id = "PLACEHOLDER_RUN_API_SETUP"
+
+# Photo sharing is optional and off by default. R2 asks for a payment method on
+# the account even to use its free tier, and the board works without it, so
+# uncomment this only when you actually want photos in the feed. Create the
+# bucket first: npx wrangler r2 bucket create calorie-counter-photos
+# [[r2_buckets]]
+# binding = "PHOTOS"
+# bucket_name = "calorie-counter-photos"

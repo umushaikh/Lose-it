@@ -12,6 +12,18 @@ const MEALS = [
   { key: 'snacks', label: 'Snacks', share: 0.20 }
 ];
 
+// Everything the Friends tab knows between renders. Kept out of `state` so a
+// failed board fetch can never take the rest of the app down with it.
+const friends = {
+  group: null,
+  board: null,
+  error: '',
+  loading: false,
+  pending: 0,
+  pollTimer: null,
+  lastPushed: new Map()
+};
+
 // Visible length of the budget gauge's arc: 270° of a circle with r=80.
 const GAUGE_ARC = 2 * Math.PI * 80 * 0.75;
 
@@ -218,6 +230,7 @@ async function loadDayData() {
 
 async function refreshAll() {
   state.settings = await db.getSettings();
+  friends.group = await db.getGroup();
   state.foods = await db.getFoods();
   state.weightLog = await db.getWeightLog();
   state.recipes = await db.getRecipes();
@@ -241,6 +254,7 @@ function render() {
   }
 
   renderToday();
+  renderFriends();
   renderFoods();
   renderRecipes();
   renderWeight();
@@ -312,6 +326,19 @@ function renderToday() {
         </div>`;
       }).join('')
       : `<div class="empty-hint">No items logged</div>`;
+  });
+
+  // Everything that changes the diary ends up re-rendering, so this one call
+  // site covers every add, edit and delete without threading sync through them.
+  queueDaySync({
+    date: state.currentDate,
+    eaten: eaten.calories,
+    budget: goals.goalCalories,
+    exercise: exerciseCal,
+    protein: eaten.protein,
+    carbs: eaten.carbs,
+    fat: eaten.fat,
+    entries: MEALS.reduce((n, m) => n + state.diaryDay[m.key].length, 0)
   });
 
   const exList = document.getElementById('exercise-list');
@@ -1368,11 +1395,341 @@ function openLogFoodModal(food) {
 }
 
 // ---- Event wiring ----
+
+// ---- Friends: shared board ----
+
+let daySyncTimer = null;
+
+// Debounced because it is called from renderToday, which runs on every
+// keystroke-driven re-render. Also deduplicated: browsing back through old days
+// re-renders each one, and there is no reason to rewrite a row that has not
+// changed.
+function queueDaySync(summary) {
+  const fingerprint = JSON.stringify(summary);
+  if (friends.lastPushed.get(summary.date) === fingerprint) return;
+
+  clearTimeout(daySyncTimer);
+  daySyncTimer = setTimeout(async () => {
+    if (!(await groups.isJoined())) return;
+    friends.lastPushed.set(summary.date, fingerprint);
+    const result = await groups.pushDay(summary).catch(() => ({ sent: false }));
+    friends.pending = result.pending || 0;
+    // A failed send must not stick in lastPushed, or the retry never happens.
+    if (!result.sent) friends.lastPushed.delete(summary.date);
+    renderFriendsSyncState();
+    if (result.sent && state.activeTab === 'friends') refreshBoard();
+  }, 1500);
+}
+
+function timeAgo(ms) {
+  if (!ms) return '';
+  const mins = Math.round((Date.now() - ms) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
+async function refreshBoard(showSpinner = false) {
+  if (!(await groups.isJoined())) return;
+  if (showSpinner) {
+    friends.loading = true;
+    renderFriends();
+  }
+  try {
+    friends.board = await groups.board(state.currentDate);
+    friends.error = '';
+  } catch (err) {
+    friends.error = err.message || 'Could not reach the group server';
+  } finally {
+    friends.loading = false;
+    friends.pending = (await db.getOutbox()).length;
+    renderFriends();
+  }
+}
+
+// Polls only while the tab is actually on screen and the page is visible, so a
+// backgrounded phone isn't making requests all day.
+function updateFriendsPolling() {
+  clearInterval(friends.pollTimer);
+  friends.pollTimer = null;
+  if (state.activeTab !== 'friends' || document.hidden) return;
+  friends.pollTimer = setInterval(() => {
+    if (document.hidden) return;
+    groups.flush().then(r => { friends.pending = r.pending || 0; }).catch(() => {});
+    refreshBoard();
+  }, 30000);
+}
+
+function renderFriendsSyncState() {
+  const el = document.getElementById('friends-sync-state');
+  if (!el) return;
+  if (friends.pending > 0) {
+    el.textContent = `${friends.pending} update${friends.pending === 1 ? '' : 's'} waiting to send`;
+    el.className = 'friends-sync-state warn';
+  } else if (friends.error) {
+    el.textContent = friends.error;
+    el.className = 'friends-sync-state warn';
+  } else if (friends.board) {
+    el.textContent = `Up to date · ${formatDate(state.currentDate)}`;
+    el.className = 'friends-sync-state';
+  } else {
+    el.textContent = '';
+    el.className = 'friends-sync-state';
+  }
+}
+
+function renderFriends() {
+  const setup = document.getElementById('friends-setup');
+  const board = document.getElementById('friends-board');
+  if (!setup || !board) return;
+
+  const joined = Boolean(friends.group && friends.group.serverUrl && friends.group.token && friends.group.groupId);
+  setup.classList.toggle('hidden', joined);
+  board.classList.toggle('hidden', !joined);
+  if (!joined) return;
+
+  document.getElementById('friends-group-name').textContent = friends.group.groupName || 'Your group';
+  renderFriendsSyncState();
+
+  const membersEl = document.getElementById('friends-members');
+  const data = friends.board;
+
+  if (!data) {
+    membersEl.innerHTML = friends.loading
+      ? '<div class="empty-hint">Loading…</div>'
+      : `<div class="empty-hint">${escapeHtml(friends.error || 'Pull to refresh when you have a connection.')}</div>`;
+    document.getElementById('friends-feed').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('friends-photo-btn').classList.toggle('hidden', !data.photosEnabled);
+
+  // The person who is furthest through their budget sorts last, so the top of
+  // the list is whoever has room left. Anyone who hasn't logged goes to the
+  // bottom rather than reading as though they ate nothing.
+  const ranked = [...data.members].sort((a, b) => {
+    if (a.logged !== b.logged) return a.logged ? -1 : 1;
+    const pa = a.budget ? a.eaten / a.budget : 0;
+    const pb = b.budget ? b.eaten / b.budget : 0;
+    return pa - pb;
+  });
+
+  membersEl.innerHTML = ranked.map(m => {
+    const allowance = m.budget + m.exercise;
+    const remaining = allowance - m.eaten;
+    const pct = allowance > 0 ? Math.min(100, Math.round((m.eaten / allowance) * 100)) : 0;
+    const isMe = m.id === data.me.id;
+    const over = remaining < 0;
+
+    if (!m.logged) {
+      return `
+        <div class="friend-row quiet">
+          <div class="friend-top">
+            <span class="friend-name">${escapeHtml(m.name)}${isMe ? ' <span class="friend-you">you</span>' : ''}</span>
+            <span class="friend-status">Nothing logged</span>
+          </div>
+          <div class="friend-track"><div class="friend-fill" style="width:0%"></div></div>
+        </div>`;
+    }
+    return `
+      <div class="friend-row">
+        <div class="friend-top">
+          <span class="friend-name">${escapeHtml(m.name)}${isMe ? ' <span class="friend-you">you</span>' : ''}</span>
+          <span class="friend-status ${over ? 'over' : ''}">${over
+            ? `${Math.abs(remaining).toLocaleString()} over`
+            : `${remaining.toLocaleString()} left`}</span>
+        </div>
+        <div class="friend-track"><div class="friend-fill ${over ? 'over' : ''}" style="width:${pct}%"></div></div>
+        <div class="friend-sub">${m.eaten.toLocaleString()} of ${allowance.toLocaleString()} cal · ${m.entries} item${m.entries === 1 ? '' : 's'}${m.exercise ? ` · ${m.exercise} from exercise` : ''} · ${timeAgo(m.updatedAt)}</div>
+      </div>`;
+  }).join('') || '<div class="empty-hint">Nobody here yet.</div>';
+
+  const feedEl = document.getElementById('friends-feed');
+  feedEl.innerHTML = data.events.length
+    ? data.events.map(e => {
+      const who = escapeHtml(e.memberName);
+      const when = timeAgo(e.createdAt);
+      if (e.kind === 'photo') {
+        return `
+          <div class="feed-item">
+            <div class="feed-head"><strong>${who}</strong><span>${when}</span></div>
+            ${e.text ? `<div class="feed-text">${escapeHtml(e.text)}</div>` : ''}
+            ${e.photoKey ? `<img class="feed-photo" data-photo-key="${escapeHtml(e.photoKey)}" alt="Meal photo shared by ${who}" />` : ''}
+            ${e.calories ? `<div class="feed-meta">${e.calories.toLocaleString()} cal</div>` : ''}
+          </div>`;
+      }
+      const line = e.kind === 'joined'
+        ? 'joined the group'
+        : e.kind === 'weigh_in'
+          ? `weighed in${e.text ? ` — ${escapeHtml(e.text)}` : ''}`
+          : e.kind === 'day_done'
+            ? `finished the day${e.text ? ` — ${escapeHtml(e.text)}` : ''}`
+            : escapeHtml(e.text || '');
+      return `
+        <div class="feed-item slim">
+          <div class="feed-line"><strong>${who}</strong> ${line}</div>
+          <div class="feed-meta">${when}</div>
+        </div>`;
+    }).join('')
+    : '<div class="empty-hint">Nothing shared yet.</div>';
+
+  // Photos need an authenticated fetch, so they are filled in after the markup.
+  feedEl.querySelectorAll('img[data-photo-key]').forEach(async img => {
+    try {
+      img.src = await groups.photoUrl(img.dataset.photoKey);
+    } catch {
+      img.remove();
+    }
+  });
+}
+
+function fileToJpegBlob(file, maxEdge = 900, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        blob => (blob ? resolve(blob) : reject(new Error('Could not prepare that image'))),
+        'image/jpeg',
+        quality
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('That image could not be read. Try a different photo, or screenshot it first.'));
+    };
+    img.src = url;
+  });
+}
+
+function wireFriends() {
+  const status = document.getElementById('friends-setup-status');
+  const setStatus = (text, bad) => {
+    status.textContent = text;
+    status.classList.toggle('negative', Boolean(bad));
+  };
+
+  async function setUp(action) {
+    const serverUrl = document.getElementById('friends-server').value.trim();
+    const memberName = document.getElementById('friends-name').value.trim();
+    if (!serverUrl) return setStatus('Enter the server address first.', true);
+    if (!memberName) return setStatus('Enter the name your friends will see.', true);
+
+    setStatus('Contacting the server…');
+    try {
+      await groups.probe(serverUrl);
+      if (action === 'create') {
+        await groups.createGroup({ serverUrl, groupName: `${memberName}'s group`, memberName });
+      } else {
+        const joinCode = document.getElementById('friends-code').value.trim();
+        if (!joinCode) return setStatus('Enter the join code your friend sent you.', true);
+        await groups.joinGroup({ serverUrl, joinCode, memberName });
+      }
+      friends.group = await db.getGroup();
+      friends.lastPushed.clear();
+      setStatus('');
+      renderFriends();
+      // Push today's numbers straight away so the board isn't empty on arrival.
+      renderToday();
+      await refreshBoard(true);
+      if (action === 'create') openModal('invite-modal');
+    } catch (err) {
+      setStatus(err.message || 'Could not reach that server.', true);
+    }
+  }
+
+  document.getElementById('friends-create-btn').addEventListener('click', () => setUp('create'));
+  document.getElementById('friends-join-btn').addEventListener('click', () => setUp('join'));
+  document.getElementById('friends-refresh-btn').addEventListener('click', async () => {
+    await groups.flush().catch(() => {});
+    refreshBoard(true);
+  });
+
+  document.getElementById('friends-invite-btn').addEventListener('click', () => {
+    document.getElementById('invite-server').textContent = friends.group.serverUrl;
+    document.getElementById('invite-code').textContent = friends.group.joinCode;
+    openModal('invite-modal');
+  });
+
+  document.getElementById('invite-copy-btn').addEventListener('click', async () => {
+    const text = `Join my calorie group\nServer: ${friends.group.serverUrl}\nCode: ${friends.group.joinCode}`;
+    const btn = document.getElementById('invite-copy-btn');
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = 'Copied';
+    } catch {
+      // Clipboard is blocked in some in-app browsers; the values are on screen.
+      btn.textContent = 'Copy failed — read them off the screen';
+    }
+    setTimeout(() => { btn.textContent = 'Copy both'; }, 2500);
+  });
+
+  document.getElementById('friends-leave-btn').addEventListener('click', async () => {
+    if (!confirm('Leave this group? Your shared numbers and posts are deleted from the server. Your diary on this phone is untouched.')) return;
+    await groups.leave();
+    friends.group = await db.getGroup();
+    friends.board = null;
+    friends.lastPushed.clear();
+    renderFriends();
+  });
+
+  const photoInput = document.getElementById('friends-photo-input');
+  document.getElementById('friends-photo-btn').addEventListener('click', () => photoInput.click());
+  photoInput.addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const btn = document.getElementById('friends-photo-btn');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Sharing…';
+    try {
+      const blob = await fileToJpegBlob(file);
+      const { key } = await groups.uploadPhoto(blob);
+      const caption = prompt('Say something about it (optional)') || '';
+      await groups.postEvent({ kind: 'photo', photoKey: key, text: caption.trim() || null });
+      await refreshBoard();
+    } catch (err) {
+      alert(err.message || 'Could not share that photo.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+      e.target.value = '';
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    updateFriendsPolling();
+    if (!document.hidden) {
+      groups.flush().then(r => { friends.pending = r.pending || 0; renderFriendsSyncState(); }).catch(() => {});
+    }
+  });
+  window.addEventListener('online', () => {
+    groups.flush().then(r => {
+      friends.pending = r.pending || 0;
+      renderFriendsSyncState();
+      if (state.activeTab === 'friends') refreshBoard();
+    }).catch(() => {});
+  });
+}
+
 function wireEvents() {
   document.querySelectorAll('.tabbar button').forEach(btn => {
     btn.addEventListener('click', () => {
       if (!state.settings.onboarded && btn.dataset.tab !== 'settings') return;
       state.activeTab = btn.dataset.tab;
+      if (state.activeTab === 'friends') {
+        groups.flush().catch(() => {});
+        refreshBoard(!friends.board);
+      }
+      updateFriendsPolling();
       render();
     });
   });
@@ -1840,6 +2197,12 @@ function wireEvents() {
     await db.addWeightEntry(date, weightKg);
     state.settings = await db.getSettings();
     state.weightLog = await db.getWeightLog();
+    if (friends.group && friends.group.shareWeighIns) {
+      groups.postEvent({
+        kind: 'weigh_in',
+        text: `${displayWeight(weightKg, units)} ${weightUnitLabel(units)}`
+      }).catch(() => {});
+    }
     form.reset();
     render();
   });
@@ -1919,5 +2282,11 @@ function wireEvents() {
     applyTheme(state.settings.theme || 'dark');
   });
   wireEvents();
+  wireFriends();
   await refreshAll();
+  // Deliver anything that was queued while the app was closed.
+  groups.flush().then(r => {
+    friends.pending = r.pending || 0;
+    renderFriendsSyncState();
+  }).catch(() => {});
 })();
