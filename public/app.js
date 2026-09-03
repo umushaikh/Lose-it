@@ -1491,6 +1491,7 @@ function renderFriends() {
   if (!joined) return;
 
   document.getElementById('friends-group-name').textContent = friends.group.groupName || 'Your group';
+  document.getElementById('friends-share-weighins').checked = Boolean(friends.group.shareWeighIns);
   renderFriendsSyncState();
 
   const membersEl = document.getElementById('friends-members');
@@ -1670,6 +1671,10 @@ function wireFriends() {
       btn.textContent = 'Copy failed — read them off the screen';
     }
     setTimeout(() => { btn.textContent = 'Copy both'; }, 2500);
+  });
+
+  document.getElementById('friends-share-weighins').addEventListener('change', async e => {
+    friends.group = await db.saveGroup({ shareWeighIns: e.target.checked, shareWeighInsSet: true });
   });
 
   document.getElementById('friends-leave-btn').addEventListener('click', async () => {
@@ -2204,6 +2209,12 @@ function wireEvents() {
       }).catch(() => {});
     }
     form.reset();
+    // The date field is required, but reset() clears it to blank rather than
+    // back to today (it was only ever set as a JS property, not an HTML
+    // default), so a second weigh-in logged in the same session would fail
+    // native validation silently - the submit handler simply never runs
+    // again until the field is manually refilled.
+    form.date.valueAsDate = new Date();
     render();
   });
   document.getElementById('weight-date').valueAsDate = new Date();

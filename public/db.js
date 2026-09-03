@@ -35,7 +35,8 @@ function defaultGroup() {
     memberId: '',
     memberName: '',
     token: '',
-    shareWeighIns: true
+    shareWeighIns: false, // opt-in: weight is more private than a calorie count
+    shareWeighInsSet: false // has the user actually made this choice, vs. it being the default
   };
 }
 
@@ -51,6 +52,13 @@ function loadDb() {
       if (!parsed.weightLog) parsed.weightLog = [];
       if (!parsed.recipes) parsed.recipes = [];
       if (!parsed.group) parsed.group = defaultGroup();
+      else if (parsed.group.shareWeighIns === true && !parsed.group.shareWeighInsSet) {
+        // Corrects a bug where this defaulted to on with no toggle to see or
+        // change it - nobody could have chosen "on" on purpose before that
+        // toggle existed, so a stored "true" here is only ever the old
+        // default leaking through, never a real choice.
+        parsed.group.shareWeighIns = false;
+      }
       if (!Array.isArray(parsed.outbox)) parsed.outbox = [];
       return parsed;
     } catch {
