@@ -372,6 +372,7 @@ function renderToday() {
     const macrosEl = document.getElementById(`meal-${m.key}-macros`);
     summaryBtn.classList.toggle('hidden', items.length === 0);
     const isOpen = items.length > 0 && Boolean(state.mealSummaryOpen[m.key]);
+    summaryBtn.classList.toggle('open', isOpen);
     macrosEl.classList.toggle('hidden', !isOpen);
     if (isOpen) {
       const s = sumMeal(items);
@@ -1603,6 +1604,19 @@ async function shareMealToGroup(mealKey, entryId) {
   }
 }
 
+// Saves a newly-logged food to My Foods if it isn't already there, so it's
+// one tap away next time - the same thing every other way of logging a food
+// already does (search, scan, photo estimate). A shared meal from a friend
+// is still a real food someone ate; there's no reason copying it from their
+// profile or the feed should behave any differently.
+async function saveToMyFoods(food) {
+  const alreadySaved = state.foods.some(f => f.name.toLowerCase() === food.name.toLowerCase());
+  if (!alreadySaved) {
+    await db.addFood(food);
+    state.foods = await db.getFoods();
+  }
+}
+
 async function refreshBoard(showSpinner = false) {
   if (!(await groups.isJoined())) return;
   if (showSpinner) {
@@ -1956,6 +1970,7 @@ function wireFriends() {
       if (!item) return;
       if (!confirm(`Add "${item.name}" to your diary today?`)) return;
       await db.addDiaryEntry(state.currentDate, meal, item);
+      await saveToMyFoods(item);
       await loadDayData();
       closeModal('member-profile-modal');
       state.activeTab = 'today';
@@ -1972,6 +1987,7 @@ function wireFriends() {
       if (!confirm(`Add all ${items.length} item${items.length === 1 ? '' : 's'} from ${member.name}'s ${label.toLowerCase()} to your own diary today?`)) return;
       for (const item of items) {
         await db.addDiaryEntry(state.currentDate, meal, item);
+        await saveToMyFoods(item);
       }
       await loadDayData();
       closeModal('member-profile-modal');
@@ -1992,6 +2008,7 @@ function wireFriends() {
     if (!confirm(confirmText)) return;
     for (const item of sm.items) {
       await db.addDiaryEntry(state.currentDate, sm.mealKey, item);
+      await saveToMyFoods(item);
     }
     await loadDayData();
     state.activeTab = 'today';
