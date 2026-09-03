@@ -145,7 +145,7 @@
 
       <form id="weight-form" class="inline-form">
         <input id="weight-date" name="date" type="date" required />
-        <input name="value" type="number" step="0.1" min="0" placeholder="Weight" required />
+        <input name="value" type="number" step="any" min="0" placeholder="Weight" required />
         <button type="submit" class="primary-btn">Log</button>
       </form>
 
@@ -182,12 +182,12 @@
         </label>
 
         <div id="weight-imperial" class="field-row">
-          <label class="field">Weight (lb)<input name="weightLb" type="number" step="0.1" min="0" /></label>
-          <label class="field">Goal weight (lb)<input name="goalWeightLb" type="number" step="0.1" min="0" /></label>
+          <label class="field">Weight (lb)<input name="weightLb" type="number" step="any" min="0" /></label>
+          <label class="field">Goal weight (lb)<input name="goalWeightLb" type="number" step="any" min="0" /></label>
         </div>
         <div id="weight-metric" class="field-row">
-          <label class="field">Weight (kg)<input name="weightKg" type="number" step="0.1" min="0" /></label>
-          <label class="field">Goal weight (kg)<input name="goalWeightKg" type="number" step="0.1" min="0" /></label>
+          <label class="field">Weight (kg)<input name="weightKg" type="number" step="any" min="0" /></label>
+          <label class="field">Goal weight (kg)<input name="goalWeightKg" type="number" step="any" min="0" /></label>
         </div>
 
         <label class="field">Activity level
@@ -220,9 +220,12 @@
         <div class="field">
           <div class="field-label-row">Photo estimates <span>optional</span></div>
           <input name="apiKey" type="password" autocomplete="off" placeholder="Anthropic API key (sk-ant-...)" />
-          <p class="field-hint">Needed only for the “Photo estimate” button. The key is stored on this device
-            only, is never included in backups, and is sent straight to Anthropic. Each photo costs about a
-            penny on your own account. Get one at console.anthropic.com.</p>
+          <p class="field-hint">Needed only for the “Photo estimate” button — everything else works without it.
+            Sign up at console.anthropic.com, add a few dollars of credit, create an API key and paste it here.
+            It is stored on this phone only, kept out of backups, and sent straight to Anthropic. Each photo
+            costs roughly a penny on your own account.</p>
+          <button type="button" id="test-key-btn" class="secondary-btn full">Test this key</button>
+          <div id="test-key-status" class="search-status"></div>
         </div>
 
         <div class="field">
@@ -343,6 +346,24 @@
       <button class="icon-btn" data-close-modal="log-food-modal">✕</button>
     </div>
     <form id="log-food-form">
+      <label class="field">Serving<input name="servingDesc" type="text" placeholder="e.g. 100 g, 1 cup" /></label>
+
+      <div class="field-label-row">Amount <span id="log-food-totals" class="totals-readout"></span></div>
+      <div class="field-row">
+        <label class="field">Servings<input id="log-food-qty" type="number" step="any" min="0" value="1" /></label>
+        <label class="field hidden" id="log-food-grams-row">Grams<input id="log-food-grams" type="number" step="any" min="0" /></label>
+      </div>
+
+      <div class="field-label-row">Per serving</div>
+      <div class="field-row">
+        <label class="field">Calories<input name="calories" type="number" step="any" min="0" required /></label>
+        <label class="field">Protein<input name="protein" type="number" step="any" min="0" /></label>
+      </div>
+      <div class="field-row">
+        <label class="field">Carbs<input name="carbs" type="number" step="any" min="0" /></label>
+        <label class="field">Fat<input name="fat" type="number" step="any" min="0" /></label>
+      </div>
+
       <label class="field">Meal
         <select id="log-food-meal">
           <option value="breakfast">Breakfast</option>
@@ -351,8 +372,49 @@
           <option value="snacks">Snacks</option>
         </select>
       </label>
-      <label class="field">Servings<input id="log-food-qty" type="number" step="0.25" min="0.25" value="1" /></label>
       <button type="submit" class="primary-btn full">Add to Diary</button>
+    </form>
+  </div>
+</div>
+
+<!-- Edit a logged diary entry -->
+<div id="edit-entry-modal" class="modal hidden" data-close-modal="edit-entry-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3>Edit item</h3>
+      <button class="icon-btn" data-close-modal="edit-entry-modal">✕</button>
+    </div>
+    <form id="edit-entry-form">
+      <label class="field">Name<input name="name" type="text" required /></label>
+      <label class="field">Serving<input name="servingDesc" type="text" placeholder="e.g. 100 g, 1 cup" /></label>
+
+      <div class="field-label-row">Amount <span id="edit-entry-totals" class="totals-readout"></span></div>
+      <div class="field-row">
+        <label class="field">Servings<input id="edit-entry-qty" type="number" step="any" min="0" /></label>
+        <label class="field hidden" id="edit-entry-grams-row">Grams<input id="edit-entry-grams" type="number" step="any" min="0" /></label>
+      </div>
+
+      <div class="field-label-row">Per serving</div>
+      <div class="field-row">
+        <label class="field">Calories<input name="calories" type="number" step="any" min="0" required /></label>
+        <label class="field">Protein<input name="protein" type="number" step="any" min="0" /></label>
+      </div>
+      <div class="field-row">
+        <label class="field">Carbs<input name="carbs" type="number" step="any" min="0" /></label>
+        <label class="field">Fat<input name="fat" type="number" step="any" min="0" /></label>
+      </div>
+
+      <label class="field">Meal
+        <select id="edit-entry-meal">
+          <option value="breakfast">Breakfast</option>
+          <option value="lunch">Lunch</option>
+          <option value="dinner">Dinner</option>
+          <option value="snacks">Snacks</option>
+        </select>
+      </label>
+
+      <button type="submit" class="primary-btn full">Save</button>
+      <button type="button" id="edit-entry-delete" class="danger-btn full">Delete from diary</button>
     </form>
   </div>
 </div>
@@ -380,13 +442,25 @@
       <h3>Photo estimate</h3>
       <button class="icon-btn" data-close-modal="photo-modal">✕</button>
     </div>
-    <p class="modal-hint">A photo gives a rough estimate — portion size is hard to judge from an image, so
-      check the numbers before logging.</p>
+    <p class="modal-hint">Take a photo or pick one from your camera roll. A photo gives a rough estimate —
+      portion size is hard to judge from an image — so you get to check the numbers before it's logged.</p>
     <label class="secondary-btn full file-label">
-      Take or choose a photo
-      <input id="photo-input" type="file" accept="image/*" capture="environment" hidden />
+      Take photo or choose from library
+      <input id="photo-input" type="file" accept="image/*" hidden />
     </label>
     <div id="photo-status" class="search-status"></div>
+    <div id="photo-setup" class="setup-note hidden">
+      <p><strong>This one needs a quick one-time setup.</strong> Photo recognition runs on Claude's AI, and
+        your app has no server of its own — so it uses your own Anthropic account directly.</p>
+      <ol>
+        <li>Go to <strong>console.anthropic.com</strong> and sign up.</li>
+        <li>Add a little credit (billing → the minimum is a few dollars, and each photo costs around a penny).</li>
+        <li>Open <strong>API Keys</strong> → <strong>Create Key</strong>, and copy it.</li>
+        <li>Paste it into <strong>Goals → Photo estimates</strong> in this app, then press Save.</li>
+      </ol>
+      <p>The key is saved only on this phone, never leaves it except to talk to Anthropic, and is left out of
+        your backups. Everything else in the app works without it.</p>
+    </div>
   </div>
 </div>
 
@@ -399,16 +473,24 @@
     </div>
     <p id="confirm-food-note" class="modal-hint"></p>
     <form id="confirm-food-form">
-      <label class="field">Serving<input name="servingDesc" type="text" /></label>
+      <label class="field">Serving<input name="servingDesc" type="text" placeholder="e.g. 100 g, 1 plate" /></label>
+
+      <div class="field-label-row">Amount <span id="confirm-food-totals" class="totals-readout"></span></div>
       <div class="field-row">
-        <label class="field">Calories<input name="calories" type="number" min="0" required /></label>
-        <label class="field">Servings<input id="confirm-food-qty" type="number" step="0.25" min="0.25" value="1" /></label>
+        <label class="field">Servings<input id="confirm-food-qty" type="number" step="any" min="0" value="1" /></label>
+        <label class="field hidden" id="confirm-food-grams-row">Grams<input id="confirm-food-grams" type="number" step="any" min="0" /></label>
+      </div>
+
+      <div class="field-label-row">Per serving</div>
+      <div class="field-row">
+        <label class="field">Calories<input name="calories" type="number" step="any" min="0" required /></label>
+        <label class="field">Protein<input name="protein" type="number" step="any" min="0" /></label>
       </div>
       <div class="field-row">
-        <label class="field">Protein (g)<input name="protein" type="number" min="0" step="0.1" /></label>
-        <label class="field">Carbs (g)<input name="carbs" type="number" min="0" step="0.1" /></label>
-        <label class="field">Fat (g)<input name="fat" type="number" min="0" step="0.1" /></label>
+        <label class="field">Carbs<input name="carbs" type="number" step="any" min="0" /></label>
+        <label class="field">Fat<input name="fat" type="number" step="any" min="0" /></label>
       </div>
+
       <label class="field">Meal
         <select id="confirm-food-meal">
           <option value="breakfast">Breakfast</option>
@@ -432,7 +514,7 @@
     <form id="recipe-form">
       <div class="field-row">
         <label class="field">Name<input name="name" type="text" placeholder="e.g. Chicken curry" required /></label>
-        <label class="field">Servings<input name="servings" type="number" min="0.25" step="0.25" value="1" required /></label>
+        <label class="field">Servings<input name="servings" type="number" min="0" step="any" value="1" required /></label>
       </div>
 
       <div class="field-label-row">Ingredients <span id="recipe-per-serving"></span></div>

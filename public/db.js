@@ -128,6 +128,8 @@ const db = {
     const item = {
       id: uid(),
       name: entry.name,
+      // Kept so the entry can be re-scaled later - it carries the gram basis.
+      servingDesc: entry.servingDesc || '1 serving',
       qty: Number(entry.qty) || 1,
       calories: Number(entry.calories) || 0,
       protein: Number(entry.protein) || 0,
@@ -137,6 +139,21 @@ const db = {
     day[meal].push(item);
     saveDb(store);
     return item;
+  },
+
+  async updateDiaryEntry(date, meal, entryId, patch) {
+    const store = loadDb();
+    const day = dayDiary(store, date);
+    const entry = day[meal].find(i => i.id === entryId);
+    if (!entry) return null;
+    ['name', 'servingDesc'].forEach(k => {
+      if (patch[k] != null) entry[k] = patch[k];
+    });
+    ['qty', 'calories', 'protein', 'carbs', 'fat'].forEach(k => {
+      if (patch[k] != null) entry[k] = Number(patch[k]) || 0;
+    });
+    saveDb(store);
+    return entry;
   },
 
   async deleteDiaryEntry(date, meal, entryId) {

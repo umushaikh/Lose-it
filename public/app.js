@@ -45,8 +45,11 @@ const state = {
   recipePickerRows: [], // ingredient search results, indexed by row
   confirmFood: null, // scanned or photographed food awaiting confirmation
   pendingMeal: null, // meal the scan/photo was started from
-  scanStream: null, // live camera stream while scanning
-  scanTimer: null
+  scanStream: null, // live camera stream while scanning (BarcodeDetector path)
+  scanTimer: null,
+  zxingReader: null, // ZXing owns its own stream when it is the decoder
+  scanHandled: false, // guards ZXing's callback firing repeatedly on one code
+  editingEntry: null // diary entry open in the edit sheet
 };
 
 // Tracks which units the settings form is currently displaying, independent of
@@ -257,14 +260,21 @@ function renderToday() {
     const list = document.getElementById(`meal-${m.key}-list`);
     document.getElementById(`meal-${m.key}-total`).textContent = `${total.toLocaleString()} cal`;
     list.innerHTML = items.length
-      ? items.map(i => `
+      ? items.map(i => {
+        const t = scaleNutrition(i, i.qty);
+        const grams = parseServingGrams(i.servingDesc);
+        const amount = grams
+          ? `${Math.round(i.qty * grams * 10) / 10} g`
+          : `${Math.round(i.qty * 100) / 100} × ${escapeHtml(i.servingDesc || 'serving')}`;
+        return `
         <div class="entry-row" data-entry-id="${i.id}" data-meal="${m.key}">
-          <div class="entry-info">
+          <button type="button" class="entry-info entry-open" data-meal="${m.key}" data-entry-id="${i.id}">
             <div class="entry-name">${escapeHtml(i.name)}</div>
-            <div class="entry-sub">${i.qty !== 1 ? `${i.qty}× · ` : ''}${Math.round(i.calories * i.qty)} cal</div>
-          </div>
+            <div class="entry-sub">${amount} · ${t.calories} cal · P${t.protein} C${t.carbs} F${t.fat}</div>
+          </button>
           <button class="icon-btn small remove-entry-btn" data-meal="${m.key}" data-entry-id="${i.id}" title="Remove">✕</button>
-        </div>`).join('')
+        </div>`;
+      }).join('')
       : `<div class="empty-hint">No items logged</div>`;
   });
 
@@ -525,7 +535,8 @@ function fileToScaledJpeg(file, maxEdge = 1024) {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error('That image could not be read.'));
+      // Usually a HEIC the browser can't decode; a screenshot or shared copy is JPEG.
+      reject(new Error('That image could not be read. Try a different photo, or screenshot it first.'));
     };
     img.src = url;
   });
@@ -605,7 +616,8 @@ async function runPhotoEstimate(file) {
   const status = document.getElementById('photo-status');
   const key = (state.settings.apiKey || '').trim();
   if (!key) {
-    status.textContent = 'Add an Anthropic API key under Goals → Photo estimates first.';
+    status.textContent = 'Not set up yet — follow the steps below.';
+    document.getElementById('photo-setup').classList.remove('hidden');
     return;
   }
   status.textContent = 'Reading the photo…';
@@ -622,11 +634,21 @@ async function runPhotoEstimate(file) {
 }
 
 // ---- Modals ----
+// The page behind a sheet is frozen while it is open. Without this, focusing the
+// search box makes the phone keyboard scroll the whole page, pushing the results
+// out of sight underneath the sheet.
+function syncBodyScrollLock() {
+  const anyOpen = !!document.querySelector('.modal:not(.hidden)');
+  document.body.classList.toggle('modal-open', anyOpen);
+}
+
 function openModal(id) {
   document.getElementById(id).classList.remove('hidden');
+  syncBodyScrollLock();
 }
 function closeModal(id) {
   document.getElementById(id).classList.add('hidden');
+  syncBodyScrollLock();
 }
 
 function openAddEntryModal(meal) {
@@ -670,7 +692,7 @@ function renderAddEntryFoodList(query) {
           <span class="source-tag">${SOURCE_LABEL[f.source] || ''}</span></div>
       </div>
       <div class="qty-picker">
-        <input type="number" class="qty-input" min="0.25" step="0.25" value="1" data-idx="${i}" />
+        <input type="number" class="qty-input" min="0" step="any" value="1" data-idx="${i}" />
         <button class="primary-btn small add-picked-food-btn" data-idx="${i}">Add</button>
       </div>
     </div>`).join('');
@@ -704,35 +726,17 @@ async function lookupBarcode(code) {
   return mapOnlineProduct(data.product);
 }
 
-// Chrome on Android decodes barcodes natively; Safari has no BarcodeDetector,
-// so fall back to ZXing. Either way there is a manual-entry box that always works.
-async function getBarcodeReader() {
-  if ('BarcodeDetector' in window) {
-    try {
-      const formats = await window.BarcodeDetector.getSupportedFormats();
-      const wanted = ['ean_13', 'ean_8', 'upc_a', 'upc_e'].filter(f => formats.includes(f));
-      if (wanted.length) {
-        const detector = new window.BarcodeDetector({ formats: wanted });
-        return async video => {
-          const codes = await detector.detect(video);
-          return codes.length ? codes[0].rawValue : null;
-        };
-      }
-    } catch {
-      // fall through to ZXing
-    }
+const BARCODE_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'];
+
+async function nativeDetectorFormats() {
+  if (!('BarcodeDetector' in window)) return null;
+  try {
+    const supported = await window.BarcodeDetector.getSupportedFormats();
+    const wanted = BARCODE_FORMATS.filter(f => supported.includes(f));
+    return wanted.length ? wanted : null;
+  } catch {
+    return null;
   }
-  await loadZxing();
-  if (!window.ZXing) return null;
-  const reader = new window.ZXing.BrowserMultiFormatReader();
-  return async video => {
-    try {
-      const result = await reader.decodeFromVideoElement(video);
-      return result ? result.getText() : null;
-    } catch {
-      return null;
-    }
-  };
 }
 
 function loadZxing() {
@@ -748,47 +752,112 @@ function loadZxing() {
   return loadZxing.pending;
 }
 
+// Exactly one thing owns the camera at a time. With BarcodeDetector we open the
+// stream ourselves and poll frames; with ZXing we hand the camera to ZXing and
+// never call getUserMedia, because its reader resets the video element (and
+// stops the tracks) when it takes over one we opened - which looked like the
+// camera opening and immediately closing.
 async function startScanner() {
   const status = document.getElementById('scan-status');
   const video = document.getElementById('scan-video');
+  video.setAttribute('playsinline', 'true');
+  video.setAttribute('muted', 'true');
   status.textContent = 'Starting camera…';
+
+  const formats = await nativeDetectorFormats();
+  if (formats) {
+    await startNativeScanner(video, status, formats);
+    return;
+  }
+
+  status.textContent = 'Loading scanner…';
+  await loadZxing();
+  if (window.ZXing && typeof window.ZXing.BrowserMultiFormatReader === 'function') {
+    await startZxingScanner(video, status);
+    return;
+  }
+  status.textContent = 'Scanning is not supported on this browser. Type the barcode below instead.';
+}
+
+async function startNativeScanner(video, status, formats) {
   try {
     state.scanStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' } }
     });
   } catch {
-    status.textContent = 'No camera access. Type the barcode number below instead.';
+    status.textContent = 'No camera access. Allow the camera, or type the barcode below.';
     return;
   }
   video.srcObject = state.scanStream;
-  video.setAttribute('playsinline', 'true');
-  await video.play().catch(() => {});
-
-  const read = await getBarcodeReader();
-  if (!read) {
-    status.textContent = 'Scanning is not supported on this browser. Type the barcode below instead.';
-    return;
+  try {
+    await video.play();
+  } catch {
+    // Autoplay refusal still leaves a usable manual-entry box.
   }
+
+  const detector = new window.BarcodeDetector({ formats });
   status.textContent = 'Point the camera at the barcode…';
+  let busy = false;
   state.scanTimer = setInterval(async () => {
-    let code = null;
+    // Guarded so a slow detect never overlaps the next tick.
+    if (busy || !state.scanStream) return;
+    busy = true;
     try {
-      code = await read(video);
+      const codes = await detector.detect(video);
+      if (codes.length && codes[0].rawValue) {
+        const code = codes[0].rawValue;
+        stopScanner();
+        await handleBarcode(code);
+        return;
+      }
     } catch {
-      return;
+      // A dropped frame is normal; keep scanning.
+    } finally {
+      busy = false;
     }
-    if (code) {
-      stopScanner();
-      await handleBarcode(code);
-    }
-  }, 400);
+  }, 300);
+}
+
+async function startZxingScanner(video, status) {
+  try {
+    state.zxingReader = new window.ZXing.BrowserMultiFormatReader();
+    status.textContent = 'Point the camera at the barcode…';
+    // ZXing opens the camera itself here, so we never hold a competing stream.
+    await state.zxingReader.decodeFromConstraints(
+      { video: { facingMode: { ideal: 'environment' } } },
+      video,
+      (result, err) => {
+        if (!result || state.scanHandled) return;
+        state.scanHandled = true;
+        const code = result.getText();
+        stopScanner();
+        handleBarcode(code);
+      }
+    );
+  } catch {
+    stopScanner();
+    status.textContent = 'Could not start the camera. Type the barcode number below instead.';
+  }
 }
 
 function stopScanner() {
   if (state.scanTimer) clearInterval(state.scanTimer);
   state.scanTimer = null;
-  if (state.scanStream) state.scanStream.getTracks().forEach(t => t.stop());
-  state.scanStream = null;
+  if (state.zxingReader) {
+    try {
+      state.zxingReader.reset();
+    } catch {
+      // Already torn down.
+    }
+    state.zxingReader = null;
+  }
+  if (state.scanStream) {
+    state.scanStream.getTracks().forEach(t => t.stop());
+    state.scanStream = null;
+  }
+  const video = document.getElementById('scan-video');
+  if (video) video.srcObject = null;
+  state.scanHandled = false;
 }
 
 async function handleBarcode(code) {
@@ -830,6 +899,101 @@ function mapOnlineProduct(p) {
   };
 }
 
+// ---- Amount editing ----
+// A serving written as "100 g" or "170 g container" gives a gram basis, which
+// lets the amount be entered in grams instead of fractional servings.
+function parseServingGrams(servingDesc) {
+  const match = String(servingDesc || '').match(/(\d+(?:\.\d+)?)\s*g\b/i);
+  const grams = match ? Number(match[1]) : null;
+  return grams && grams > 0 ? grams : null;
+}
+
+function scaleNutrition(base, qty) {
+  const round = v => Math.round((Number(v) || 0) * qty * 10) / 10;
+  return {
+    calories: Math.round((Number(base.calories) || 0) * qty),
+    protein: round(base.protein),
+    carbs: round(base.carbs),
+    fat: round(base.fat)
+  };
+}
+
+// Reads the per-serving numbers out of a form and paints the scaled totals, so
+// changing the amount visibly changes calories and macros before you save.
+function refreshAmountTotals(prefix) {
+  const form = document.getElementById(`${prefix}-form`);
+  const qty = Number(document.getElementById(`${prefix}-qty`).value) || 0;
+  const totals = scaleNutrition({
+    calories: form.calories.value,
+    protein: form.protein.value,
+    carbs: form.carbs.value,
+    fat: form.fat.value
+  }, qty);
+  document.getElementById(`${prefix}-totals`).textContent =
+    `${totals.calories} cal · P${totals.protein} C${totals.carbs} F${totals.fat}`;
+  return totals;
+}
+
+// Keeps the grams box and the servings box describing the same amount.
+function wireGramsAndServings(prefix) {
+  const qtyInput = document.getElementById(`${prefix}-qty`);
+  const gramsInput = document.getElementById(`${prefix}-grams`);
+  const gramsRow = document.getElementById(`${prefix}-grams-row`);
+  const form = document.getElementById(`${prefix}-form`);
+
+  const basis = () => parseServingGrams(form.servingDesc.value);
+
+  const syncFromQty = () => {
+    const g = basis();
+    if (g && gramsInput) {
+      const qty = Number(qtyInput.value) || 0;
+      gramsInput.value = Math.round(qty * g * 10) / 10;
+    }
+    refreshAmountTotals(prefix);
+  };
+
+  const syncFromGrams = () => {
+    const g = basis();
+    if (!g) return;
+    const grams = Number(gramsInput.value) || 0;
+    qtyInput.value = Math.round((grams / g) * 1000) / 1000;
+    refreshAmountTotals(prefix);
+  };
+
+  qtyInput.addEventListener('input', syncFromQty);
+  if (gramsInput) gramsInput.addEventListener('input', syncFromGrams);
+  ['calories', 'protein', 'carbs', 'fat'].forEach(name => {
+    form[name].addEventListener('input', () => refreshAmountTotals(prefix));
+  });
+  form.servingDesc.addEventListener('input', () => {
+    if (gramsRow) gramsRow.classList.toggle('hidden', !basis());
+    syncFromQty();
+  });
+
+  return { syncFromQty, showGrams: () => {
+    if (gramsRow) gramsRow.classList.toggle('hidden', !basis());
+  } };
+}
+
+function openEntryEditor(meal, entry) {
+  state.editingEntry = { meal, id: entry.id };
+  const form = document.getElementById('edit-entry-form');
+  form.name.value = entry.name;
+  form.servingDesc.value = entry.servingDesc || '1 serving';
+  form.calories.value = entry.calories;
+  form.protein.value = entry.protein;
+  form.carbs.value = entry.carbs;
+  form.fat.value = entry.fat;
+  document.getElementById('edit-entry-qty').value = entry.qty;
+  document.getElementById('edit-entry-meal').value = meal;
+
+  const grams = parseServingGrams(entry.servingDesc);
+  document.getElementById('edit-entry-grams-row').classList.toggle('hidden', !grams);
+  if (grams) document.getElementById('edit-entry-grams').value = Math.round(entry.qty * grams * 10) / 10;
+  refreshAmountTotals('edit-entry');
+  openModal('edit-entry-modal');
+}
+
 // Shared review step for anything the app worked out for you - a scanned
 // product or a photo estimate - so nothing is logged without a look first.
 function openConfirmFood(food, note) {
@@ -843,7 +1007,11 @@ function openConfirmFood(food, note) {
   form.fat.value = food.fat;
   form.servingDesc.value = food.servingDesc;
   document.getElementById('confirm-food-qty').value = 1;
+  const grams = parseServingGrams(food.servingDesc);
+  document.getElementById('confirm-food-grams-row').classList.toggle('hidden', !grams);
+  if (grams) document.getElementById('confirm-food-grams').value = grams;
   document.getElementById('confirm-food-meal').value = state.pendingMeal || 'breakfast';
+  refreshAmountTotals('confirm-food');
   openModal('confirm-food-modal');
 }
 
@@ -936,7 +1104,7 @@ function renderRecipeIngredientPicker(query) {
           <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal</div>
         </div>
         <div class="qty-picker">
-          <input type="number" class="qty-input" min="0.25" step="0.25" value="1" data-ing-qty="${i}" />
+          <input type="number" class="qty-input" min="0" step="any" value="1" data-ing-qty="${i}" />
           <button type="button" class="primary-btn small add-ingredient-btn" data-idx="${i}">Add</button>
         </div>
       </div>`).join('')
@@ -962,8 +1130,18 @@ function openFoodEditor(food) {
 function openLogFoodModal(food) {
   // Held as an object rather than an id, since built-in foods aren't stored.
   state.logFoodTarget = food;
+  const form = document.getElementById('log-food-form');
+  form.servingDesc.value = food.servingDesc || '1 serving';
+  form.calories.value = food.calories;
+  form.protein.value = food.protein;
+  form.carbs.value = food.carbs;
+  form.fat.value = food.fat;
+  const grams = parseServingGrams(food.servingDesc);
+  document.getElementById('log-food-grams-row').classList.toggle('hidden', !grams);
+  if (grams) document.getElementById('log-food-grams').value = grams;
   document.getElementById('log-food-title').textContent = `Log ${food.name}`;
   document.getElementById('log-food-qty').value = 1;
+  refreshAmountTotals('log-food');
   document.getElementById('log-food-meal').value = 'breakfast';
   openModal('log-food-modal');
 }
@@ -995,6 +1173,13 @@ function wireEvents() {
   });
 
   document.getElementById('today-panel').addEventListener('click', async e => {
+    const openBtn = e.target.closest('.entry-open');
+    if (openBtn) {
+      const meal = openBtn.dataset.meal;
+      const entry = state.diaryDay[meal].find(i => i.id === openBtn.dataset.entryId);
+      if (entry) openEntryEditor(meal, entry);
+      return;
+    }
     const removeBtn = e.target.closest('.remove-entry-btn');
     if (removeBtn) {
       await db.deleteDiaryEntry(state.currentDate, removeBtn.dataset.meal, removeBtn.dataset.entryId);
@@ -1128,11 +1313,48 @@ function wireEvents() {
 
   // Photo estimate
   document.getElementById('photo-btn').addEventListener('click', () => {
-    document.getElementById('photo-status').textContent = state.settings.apiKey
-      ? 'Take or choose a photo of your food.'
-      : 'Add an Anthropic API key under Goals → Photo estimates to use this.';
+    const hasKey = !!(state.settings.apiKey || '').trim();
+    document.getElementById('photo-status').textContent = hasKey ? '' : 'Not set up yet — see below.';
+    document.getElementById('photo-setup').classList.toggle('hidden', hasKey);
     document.getElementById('photo-input').value = '';
     openModal('photo-modal');
+  });
+
+  document.getElementById('test-key-btn').addEventListener('click', async () => {
+    const status = document.getElementById('test-key-status');
+    const key = document.getElementById('settings-form').apiKey.value.trim();
+    if (!key) {
+      status.textContent = 'Paste a key above first.';
+      return;
+    }
+    status.textContent = 'Checking…';
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-5',
+          max_tokens: 16,
+          messages: [{ role: 'user', content: 'Reply with the word ok.' }]
+        })
+      });
+      if (res.ok) {
+        status.textContent = 'Key works. Save your settings and photo estimates are ready.';
+      } else {
+        const detail = await res.json().catch(() => null);
+        const msg = detail?.error?.message || `HTTP ${res.status}`;
+        status.textContent = res.status === 401
+          ? 'That key was rejected — check you copied all of it.'
+          : `Anthropic said: ${msg}`;
+      }
+    } catch {
+      status.textContent = 'Could not reach Anthropic — check your connection.';
+    }
   });
   document.getElementById('photo-input').addEventListener('change', async e => {
     const file = e.target.files[0];
@@ -1276,17 +1498,67 @@ function wireEvents() {
   });
   document.getElementById('log-food-form').addEventListener('submit', async e => {
     e.preventDefault();
-    const food = state.logFoodTarget;
-    if (!food) return;
+    const target = state.logFoodTarget;
+    if (!target) return;
+    const form = e.target;
     const qty = Number(document.getElementById('log-food-qty').value) || 1;
     const meal = document.getElementById('log-food-meal').value;
+    // Log whatever is in the form, so per-serving edits made here are kept.
+    const food = {
+      name: target.name,
+      servingDesc: form.servingDesc.value.trim() || '1 serving',
+      calories: Number(form.calories.value) || 0,
+      protein: Number(form.protein.value) || 0,
+      carbs: Number(form.carbs.value) || 0,
+      fat: Number(form.fat.value) || 0
+    };
     await db.addDiaryEntry(state.currentDate, meal, { ...food, qty });
     const alreadySaved = state.foods.some(f => f.name.toLowerCase() === food.name.toLowerCase());
-    if (food.source !== 'mine' && !alreadySaved) {
+    if (target.source !== 'mine' && !alreadySaved) {
       await db.addFood(food);
       state.foods = await db.getFoods();
     }
     closeModal('log-food-modal');
+    await loadDayData();
+    render();
+  });
+
+  // Live scaling: changing servings or grams repaints the totals in each editor.
+  ['edit-entry', 'log-food', 'confirm-food'].forEach(prefix => wireGramsAndServings(prefix));
+
+  document.getElementById('edit-entry-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const form = e.target;
+    const { meal, id } = state.editingEntry;
+    const newMeal = document.getElementById('edit-entry-meal').value;
+    const patch = {
+      name: form.name.value.trim() || 'Food',
+      servingDesc: form.servingDesc.value.trim() || '1 serving',
+      qty: Number(document.getElementById('edit-entry-qty').value) || 0,
+      calories: Number(form.calories.value) || 0,
+      protein: Number(form.protein.value) || 0,
+      carbs: Number(form.carbs.value) || 0,
+      fat: Number(form.fat.value) || 0
+    };
+    if (newMeal === meal) {
+      await db.updateDiaryEntry(state.currentDate, meal, id, patch);
+    } else {
+      // Moving meals is a delete plus an add, since entries live under a meal.
+      await db.deleteDiaryEntry(state.currentDate, meal, id);
+      await db.addDiaryEntry(state.currentDate, newMeal, patch);
+    }
+    state.editingEntry = null;
+    closeModal('edit-entry-modal');
+    await loadDayData();
+    render();
+  });
+
+  document.getElementById('edit-entry-delete').addEventListener('click', async () => {
+    const { meal, id } = state.editingEntry || {};
+    if (!id) return;
+    await db.deleteDiaryEntry(state.currentDate, meal, id);
+    state.editingEntry = null;
+    closeModal('edit-entry-modal');
     await loadDayData();
     render();
   });
