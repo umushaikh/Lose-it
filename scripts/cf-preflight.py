@@ -15,8 +15,11 @@ import urllib.error
 import urllib.request
 
 BASE = os.environ.get('CF_API_BASE', 'https://api.cloudflare.com/client/v4')
-TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
-ACCOUNT = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '')
+# Defense in depth: the workflow already strips whitespace before this runs,
+# but this script gets invoked from a plain terminal too (see api/README.md),
+# where a pasted value carries the same risk.
+TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '').strip()
+ACCOUNT = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '').strip()
 WANT_PHOTOS = '--photos' in sys.argv
 
 

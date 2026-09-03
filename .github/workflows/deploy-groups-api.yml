@@ -50,6 +50,25 @@ jobs:
           fi
           [ "$missing" = 0 ]
 
+      # A secret pasted from a phone keyboard easily picks up a trailing
+      # newline or space that is invisible in the GitHub secret field - that
+      # single stray character turns "accounts/<id>/d1/database" into a URL
+      # with a newline in the middle of it, which every HTTP client refuses to
+      # send. Whitespace is never legitimately part of a token or account id,
+      # so strip all of it, everywhere in the string, and re-mask the results
+      # since a trimmed value no longer matches the original secret exactly.
+      - name: Normalize the secrets
+        run: |
+          CLEAN_TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '[:space:]')"
+          CLEAN_ACCOUNT="$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | tr -d '[:space:]')"
+          echo "::add-mask::$CLEAN_TOKEN"
+          echo "::add-mask::$CLEAN_ACCOUNT"
+          echo "CLOUDFLARE_API_TOKEN=$CLEAN_TOKEN" >> "$GITHUB_ENV"
+          echo "CLOUDFLARE_ACCOUNT_ID=$CLEAN_ACCOUNT" >> "$GITHUB_ENV"
+          if [ "$CLEAN_ACCOUNT" != "$CLOUDFLARE_ACCOUNT_ID" ] || [ "$CLEAN_TOKEN" != "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::warning::One of the Cloudflare secrets had stray whitespace in it (likely from a copy-paste) - it has been trimmed automatically for this run. Worth re-pasting the secret cleanly next time, but nothing to do now."
+          fi
+
       - name: Install wrangler
         run: npm ci
 
