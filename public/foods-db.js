@@ -94,7 +94,7 @@ const FOOD_DB = [
 
   // --- Nuts, seeds, fats ---
   { name: 'Almonds', servingDesc: '1 oz (23 nuts)', calories: 164, protein: 6, carbs: 6.1, fat: 14.2, fiber: 0.3, sugar: 0.6, sodium: 200 },
-  { name: 'Peanut butter', servingDesc: '2 tbsp', calories: 188, protein: 8, carbs: 6.9, fat: 16, fiber: 0.0, sugar: 0.0, sodium: 5 },
+  { name: 'Peanut butter', servingDesc: '2 tbsp', calories: 188, protein: 8, carbs: 6.9, fat: 16, fiber: 2.0, sugar: 1.5, sodium: 5 },
   { name: 'Peanuts', servingDesc: '1 oz', calories: 161, protein: 7.3, carbs: 4.6, fat: 14, fiber: 0.2, sugar: 0.5, sodium: 200 },
   { name: 'Walnuts', servingDesc: '1 oz', calories: 185, protein: 4.3, carbs: 3.9, fat: 18.5, fiber: 0.2, sugar: 0.4, sodium: 200 },
   { name: 'Cashews', servingDesc: '1 oz', calories: 157, protein: 5.2, carbs: 8.6, fat: 12.4, fiber: 0.4, sugar: 0.9, sodium: 200 },
@@ -129,7 +129,7 @@ const FOOD_DB = [
   { name: 'McChicken', brand: 'McDonald’s', restaurant: true, servingDesc: '1 sandwich', calories: 400, protein: 14, carbs: 39, fat: 21, fiber: 2.0, sugar: 3.9, sodium: 230 },
   { name: 'Chicken McNuggets', brand: 'McDonald’s', restaurant: true, servingDesc: '6 pieces', calories: 250, protein: 14, carbs: 15, fat: 15, fiber: 0.8, sugar: 1.5, sodium: 230 },
   { name: 'Whopper (Burger King)', brand: 'Burger King', restaurant: true, servingDesc: '1 burger', calories: 657, protein: 28, carbs: 49, fat: 40, fiber: 2.9, sugar: 2.9, sodium: 575 },
-  { name: 'Subway turkey sub, 6 inch', brand: 'Subway', restaurant: true, servingDesc: '1 sub', calories: 280, protein: 18, carbs: 46, fat: 4, fiber: 0.0, sugar: 0.0, sodium: 85 },
+  { name: 'Subway turkey sub, 6 inch', brand: 'Subway', restaurant: true, servingDesc: '1 sub', calories: 280, protein: 18, carbs: 46, fat: 4, fiber: 3.0, sugar: 6.0, sodium: 85 },
   { name: 'Pizza, cheese', servingDesc: '1 slice', calories: 285, protein: 12.2, carbs: 35.7, fat: 10.4, fiber: 2.1, sugar: 1.8, sodium: 450 },
   { name: 'Pizza, pepperoni', servingDesc: '1 slice', calories: 313, protein: 13, carbs: 36, fat: 12, fiber: 2.2, sugar: 1.8, sodium: 450 },
   { name: 'Chicken burrito', brand: 'Mexican', restaurant: true, servingDesc: '1 burrito', calories: 975, protein: 47, carbs: 106, fat: 37, fiber: 8.5, sugar: 4.2, sodium: 675 },
@@ -203,7 +203,7 @@ const FOOD_DB = [
   { name: 'Miso soup', servingDesc: '1 cup', calories: 40, protein: 3, carbs: 4, fat: 1.5, fiber: 0.4, sugar: 0.3, sodium: 700 },
   { name: 'Salmon nigiri', servingDesc: '2 pieces', calories: 120, protein: 8, carbs: 16, fat: 2.5, fiber: 0.5, sugar: 0.5, sodium: 400 },
   { name: 'Teriyaki chicken', servingDesc: '1 cup', calories: 310, protein: 30, carbs: 22, fat: 11, fiber: 1.1, sugar: 2.2, sodium: 200 },
-  { name: 'Pho with beef', servingDesc: '1 bowl', calories: 450, protein: 30, carbs: 60, fat: 9, fiber: 0.0, sugar: 0.0, sodium: 65 },
+  { name: 'Pho with beef', servingDesc: '1 bowl', calories: 450, protein: 30, carbs: 60, fat: 9, fiber: 2.0, sugar: 4.0, sodium: 65 },
 
   // --- Mexican & Latin ---
   { name: 'Beef taco', servingDesc: '1 taco', calories: 210, protein: 9, carbs: 16, fat: 12, fiber: 1.3, sugar: 0.6, sodium: 400 },
@@ -223,7 +223,7 @@ const FOOD_DB = [
   { name: 'Omelette, cheese', servingDesc: '3 eggs', calories: 380, protein: 24, carbs: 3, fat: 30, fiber: 0.0, sugar: 0.4, sodium: 400 },
   { name: 'Granola', servingDesc: '1/2 cup', calories: 250, protein: 6, carbs: 36, fat: 10, fiber: 5.0, sugar: 1.8, sodium: 5 },
   { name: 'Overnight oats', servingDesc: '1 cup', calories: 300, protein: 12, carbs: 45, fat: 8, fiber: 6.3, sugar: 2.2, sodium: 5 },
-  { name: 'Toast with butter', servingDesc: '1 slice', calories: 130, protein: 3, carbs: 14, fat: 7, fiber: 0.0, sugar: 0.0, sodium: 5 },
+  { name: 'Toast with butter', servingDesc: '1 slice', calories: 130, protein: 3, carbs: 14, fat: 7, fiber: 1.2, sugar: 1.5, sodium: 5 },
   { name: 'Cereal with milk', servingDesc: '1 bowl', calories: 220, protein: 8, carbs: 38, fat: 4, fiber: 0.0, sugar: 36.1, sodium: 100 },
   { name: 'Bagel with cream cheese', servingDesc: '1 bagel', calories: 350, protein: 12, carbs: 50, fat: 11, fiber: 0.0, sugar: 7.5, sodium: 400 },
   { name: 'English muffin', servingDesc: '1 muffin', calories: 134, protein: 4.4, carbs: 26, fat: 1, fiber: 1.3, sugar: 2.6, sodium: 200 },
@@ -242,7 +242,7 @@ const FOOD_DB = [
   { name: 'Mac and cheese', servingDesc: '1 cup', calories: 380, protein: 14, carbs: 44, fat: 16, fiber: 0.0, sugar: 6.6, sodium: 400 },
   { name: 'Shepherd’s pie', servingDesc: '1 serving', calories: 400, protein: 22, carbs: 34, fat: 19, fiber: 1.4, sugar: 13.6, sodium: 250 },
   { name: 'Roast chicken with vegetables', servingDesc: '1 plate', calories: 480, protein: 42, carbs: 30, fat: 20, fiber: 1.5, sugar: 3.0, sodium: 240 },
-  { name: 'Fish and chips', brand: 'British', restaurant: true, servingDesc: '1 serving', calories: 840, protein: 32, carbs: 88, fat: 40, fiber: 0.0, sugar: 0.0, sodium: 105 },
+  { name: 'Fish and chips', brand: 'British', restaurant: true, servingDesc: '1 serving', calories: 840, protein: 32, carbs: 88, fat: 40, fiber: 5.0, sugar: 1.0, sodium: 105 },
   { name: 'Chicken noodle soup', servingDesc: '1 cup', calories: 150, protein: 12, carbs: 18, fat: 3.5, fiber: 1.8, sugar: 1.4, sodium: 700 },
   { name: 'Tomato soup', servingDesc: '1 cup', calories: 160, protein: 4, carbs: 22, fat: 6, fiber: 2.2, sugar: 1.8, sodium: 700 },
   { name: 'Baked beans', servingDesc: '1/2 cup', calories: 120, protein: 6, carbs: 22, fat: 0.5, fiber: 7.7, sugar: 1.1, sodium: 320 },
@@ -343,7 +343,7 @@ const FOOD_DB = [
   { name: 'Wine, white', servingDesc: '5 oz', calories: 121, protein: 0.1, carbs: 3.8, fat: 0, fiber: 0.2, sugar: 0.4, sodium: 200 },
   { name: 'Beer, light', servingDesc: '12 oz', calories: 103, protein: 0.9, carbs: 5.8, fat: 0, fiber: 0.3, sugar: 0.6, sodium: 200 },
   { name: 'Cider', servingDesc: '1 pint', calories: 210, protein: 0, carbs: 26, fat: 0, fiber: 1.3, sugar: 2.6, sodium: 200 },
-  { name: 'Coconut water', servingDesc: '1 cup', calories: 46, protein: 1.7, carbs: 9, fat: 0.5, fiber: 0.0, sugar: 0.0, sodium: 5 },
+  { name: 'Coconut water', servingDesc: '1 cup', calories: 46, protein: 1.7, carbs: 9, fat: 0.5, fiber: 0.0, sugar: 8.0, sodium: 5 },
 
   // --- Sauces, oils & extras ---
   { name: 'Butter, on bread', servingDesc: '1 tsp', calories: 34, protein: 0, carbs: 0, fat: 3.8, fiber: 0.0, sugar: 0.0, sodium: 5 },
@@ -365,10 +365,10 @@ const FOOD_DB = [
 
   // --- Emirati & Gulf home cooking ---
   { name: 'Chicken machboos', servingDesc: '1 plate', calories: 620, protein: 38, carbs: 72, fat: 20, fiber: 2.2, sugar: 1.4, sodium: 380 },
-  { name: 'Lamb machboos', servingDesc: '1 plate', calories: 720, protein: 35, carbs: 72, fat: 32, fiber: 0.0, sugar: 0.0, sodium: 65 },
+  { name: 'Lamb machboos', servingDesc: '1 plate', calories: 720, protein: 35, carbs: 72, fat: 32, fiber: 2.5, sugar: 3.0, sodium: 65 },
   { name: 'Chicken kabsa', servingDesc: '1 plate', calories: 640, protein: 37, carbs: 75, fat: 21, fiber: 2.2, sugar: 1.5, sodium: 380 },
   { name: 'Chicken mandi', servingDesc: '1 plate', calories: 680, protein: 40, carbs: 76, fat: 24, fiber: 2.3, sugar: 1.5, sodium: 380 },
-  { name: 'Lamb mandi', servingDesc: '1 plate', calories: 780, protein: 38, carbs: 76, fat: 36, fiber: 0.0, sugar: 0.0, sodium: 65 },
+  { name: 'Lamb mandi', servingDesc: '1 plate', calories: 780, protein: 38, carbs: 76, fat: 36, fiber: 2.5, sugar: 3.0, sodium: 65 },
   { name: 'Harees', servingDesc: '1 cup', calories: 250, protein: 14, carbs: 30, fat: 8, fiber: 3.0, sugar: 0.9, sodium: 500 },
   { name: 'Jareesh', servingDesc: '1 cup', calories: 230, protein: 11, carbs: 34, fat: 6, fiber: 3.4, sugar: 1.0, sodium: 500 },
   { name: 'Thereed', servingDesc: '1 bowl', calories: 420, protein: 24, carbs: 45, fat: 16, fiber: 4.5, sugar: 1.3, sodium: 500 },
@@ -440,8 +440,8 @@ const FOOD_DB = [
   { name: 'Texas Chicken 2 pc combo', brand: 'Texas Chicken', restaurant: true, servingDesc: '1 combo', calories: 830, protein: 40, carbs: 72, fat: 42, fiber: 3.6, sugar: 7.2, sodium: 475 },
   { name: 'Popeyes chicken sandwich', brand: 'Popeyes', restaurant: true, servingDesc: '1 sandwich', calories: 700, protein: 28, carbs: 50, fat: 42, fiber: 3.0, sugar: 3.0, sodium: 575 },
   { name: 'Subway Chicken Teriyaki 6 inch', brand: 'Subway', restaurant: true, servingDesc: '1 sub', calories: 370, protein: 26, carbs: 55, fat: 5, fiber: 2.8, sugar: 5.5, sodium: 230 },
-  { name: 'Subway Roast Beef 6 inch', brand: 'Subway', restaurant: true, servingDesc: '1 sub', calories: 320, protein: 24, carbs: 45, fat: 5, fiber: 0.0, sugar: 0.0, sodium: 75 },
-  { name: 'Subway Steak & Cheese 6 inch', brand: 'Subway', restaurant: true, servingDesc: '1 sub', calories: 380, protein: 26, carbs: 45, fat: 10, fiber: 0.0, sugar: 0.0, sodium: 75 },
+  { name: 'Subway Roast Beef 6 inch', brand: 'Subway', restaurant: true, servingDesc: '1 sub', calories: 320, protein: 24, carbs: 45, fat: 5, fiber: 3.0, sugar: 5.0, sodium: 75 },
+  { name: 'Subway Steak & Cheese 6 inch', brand: 'Subway', restaurant: true, servingDesc: '1 sub', calories: 380, protein: 26, carbs: 45, fat: 10, fiber: 3.0, sugar: 5.0, sodium: 75 },
   { name: 'Shake Shack ShackBurger', brand: 'Shake Shack', restaurant: true, servingDesc: '1 burger', calories: 530, protein: 29, carbs: 30, fat: 33, fiber: 1.2, sugar: 18.0, sodium: 105 },
   { name: 'Five Guys bacon cheeseburger', brand: 'Five Guys', restaurant: true, servingDesc: '1 burger', calories: 920, protein: 51, carbs: 40, fat: 62, fiber: 0.0, sugar: 2.0, sodium: 860 },
   { name: 'Nando’s quarter chicken with rice', brand: 'Nando’s', restaurant: true, servingDesc: '1 meal', calories: 560, protein: 44, carbs: 55, fat: 17, fiber: 1.6, sugar: 1.1, sodium: 435 },
@@ -455,7 +455,7 @@ const FOOD_DB = [
   { name: 'Operation Falafel falafel wrap', brand: 'Operation Falafel', restaurant: true, servingDesc: '1 wrap', calories: 520, protein: 15, carbs: 62, fat: 24, fiber: 5.0, sugar: 2.5, sodium: 460 },
   { name: 'Allo Beirut chicken taouk wrap', brand: 'Allo Beirut', restaurant: true, servingDesc: '1 wrap', calories: 480, protein: 30, carbs: 44, fat: 20, fiber: 2.6, sugar: 2.6, sodium: 575 },
   { name: 'Ravi Restaurant chicken handi', brand: 'Ravi', restaurant: true, servingDesc: '1 plate', calories: 620, protein: 40, carbs: 22, fat: 42, fiber: 1.1, sugar: 2.2, sodium: 355 },
-  { name: 'Bu Qtair fried fish with rice', brand: 'Bu Qtair', restaurant: true, servingDesc: '1 plate', calories: 620, protein: 42, carbs: 62, fat: 22, fiber: 0.0, sugar: 0.0, sodium: 105 },
+  { name: 'Bu Qtair fried fish with rice', brand: 'Bu Qtair', restaurant: true, servingDesc: '1 plate', calories: 620, protein: 42, carbs: 62, fat: 22, fiber: 1.5, sugar: 1.0, sodium: 105 },
   { name: 'Al Mallah chicken shawarma', brand: 'Al Mallah', restaurant: true, servingDesc: '1 sandwich', calories: 420, protein: 24, carbs: 40, fat: 18, fiber: 3.2, sugar: 1.6, sodium: 460 },
   { name: 'Kcal grilled chicken meal', brand: 'Kcal', restaurant: true, servingDesc: '1 meal', calories: 420, protein: 38, carbs: 38, fat: 12, fiber: 1.9, sugar: 3.8, sodium: 240 },
   { name: 'Right Bite chicken salad bowl', brand: 'Right Bite', restaurant: true, servingDesc: '1 bowl', calories: 380, protein: 32, carbs: 30, fat: 14, fiber: 7.5, sugar: 4.5, sodium: 35 },
@@ -469,9 +469,9 @@ const FOOD_DB = [
 
   // --- Lighter restaurant picks ---
   { name: 'Grilled chicken salad, restaurant', brand: 'Healthy café', restaurant: true, servingDesc: '1 bowl', calories: 350, protein: 35, carbs: 18, fat: 15, fiber: 4.5, sugar: 2.7, sodium: 35 },
-  { name: 'Grilled fish with vegetables', brand: 'Seafood', restaurant: true, servingDesc: '1 plate', calories: 400, protein: 38, carbs: 22, fat: 17, fiber: 0.0, sugar: 0.0, sodium: 105 },
+  { name: 'Grilled fish with vegetables', brand: 'Seafood', restaurant: true, servingDesc: '1 plate', calories: 400, protein: 38, carbs: 22, fat: 17, fiber: 4.0, sugar: 4.0, sodium: 105 },
   { name: 'Chicken shawarma, no bread (plate)', brand: 'Shawarma shop', restaurant: true, servingDesc: '1 portion', calories: 320, protein: 34, carbs: 8, fat: 17, fiber: 0.6, sugar: 0.3, sodium: 460 },
-  { name: 'Poke bowl, salmon', brand: 'Poke bar', restaurant: true, servingDesc: '1 bowl', calories: 560, protein: 32, carbs: 62, fat: 19, fiber: 0.0, sugar: 0.0, sodium: 105 },
+  { name: 'Poke bowl, salmon', brand: 'Poke bar', restaurant: true, servingDesc: '1 bowl', calories: 560, protein: 32, carbs: 62, fat: 19, fiber: 3.0, sugar: 6.0, sodium: 105 },
   { name: 'Chicken caesar wrap', brand: 'Café', restaurant: true, servingDesc: '1 wrap', calories: 520, protein: 32, carbs: 44, fat: 24, fiber: 2.6, sugar: 2.6, sodium: 575 },
   { name: 'Lentil soup, Arabic', brand: 'Lebanese', restaurant: true, servingDesc: '1 bowl', calories: 180, protein: 9, carbs: 26, fat: 4.5, fiber: 2.6, sugar: 2.1, sodium: 805 },
   { name: 'Sushi salmon set, 8 pcs', brand: 'Japanese', restaurant: true, servingDesc: '8 pieces', calories: 420, protein: 24, carbs: 58, fat: 10, fiber: 1.7, sugar: 1.7, sodium: 460 },
@@ -514,7 +514,7 @@ const FOOD_DB = [
 // items. Treat them as close, not exact - branches and recipes vary.
 const RESTAURANT_DB = [
   // McDonald's
-  { name: 'Filet-O-Fish', brand: 'McDonald’s', servingDesc: '1 sandwich', calories: 390, protein: 16, carbs: 39, fat: 19, fiber: 0.0, sugar: 0.0, sodium: 105 },
+  { name: 'Filet-O-Fish', brand: 'McDonald’s', servingDesc: '1 sandwich', calories: 390, protein: 16, carbs: 39, fat: 19, fiber: 1.5, sugar: 5.0, sodium: 105 },
   { name: 'Double Cheeseburger', brand: 'McDonald’s', servingDesc: '1 burger', calories: 440, protein: 25, carbs: 34, fat: 23, fiber: 1.7, sugar: 3.4, sodium: 255 },
   { name: 'Chicken Big Mac', brand: 'McDonald’s', servingDesc: '1 burger', calories: 570, protein: 29, carbs: 48, fat: 29, fiber: 2.4, sugar: 4.8, sodium: 330 },
   { name: 'Egg McMuffin', brand: 'McDonald’s', servingDesc: '1 muffin', calories: 310, protein: 17, carbs: 30, fat: 13, fiber: 0.0, sugar: 6.0, sodium: 160 },
@@ -595,7 +595,7 @@ const RESTAURANT_DB = [
   { name: 'Hot Wings, 6 pcs', brand: 'KFC', servingDesc: '6 wings', calories: 470, protein: 27, carbs: 21, fat: 31, fiber: 0.4, sugar: 0.4, sodium: 460 },
   { name: 'Fries, regular', brand: 'KFC', servingDesc: '1 regular', calories: 280, protein: 4, carbs: 37, fat: 13, fiber: 3.7, sugar: 1.1, sodium: 290 },
   { name: 'Coleslaw', brand: 'KFC', servingDesc: '1 regular', calories: 150, protein: 1, carbs: 14, fat: 10, fiber: 2.1, sugar: 2.1, sodium: 400 },
-  { name: 'Dynamite Shrimp', brand: 'KFC', servingDesc: '1 regular', calories: 340, protein: 14, carbs: 30, fat: 18, fiber: 0.0, sugar: 0.0, sodium: 105 },
+  { name: 'Dynamite Shrimp', brand: 'KFC', servingDesc: '1 regular', calories: 340, protein: 14, carbs: 30, fat: 18, fiber: 1.0, sugar: 9.0, sodium: 105 },
   { name: 'Chicken bucket, 8 pcs', brand: 'KFC', servingDesc: '8 pieces', calories: 2000, protein: 152, carbs: 64, fat: 124, fiber: 3.2, sugar: 6.4, sodium: 1150 },
   { name: 'Twister meal with fries and drink', brand: 'KFC', servingDesc: '1 meal', calories: 940, protein: 27, carbs: 116, fat: 40, fiber: 11.6, sugar: 3.5, sodium: 430 },
 
@@ -620,13 +620,13 @@ const RESTAURANT_DB = [
   // Al Baik
   { name: 'Broasted chicken, 5 pcs', brand: 'Al Baik', servingDesc: '5 pieces', calories: 870, protein: 65, carbs: 47, fat: 47, fiber: 2.4, sugar: 4.7, sodium: 500 },
   { name: 'Chicken nuggets, 9 pcs', brand: 'Al Baik', servingDesc: '9 pieces', calories: 520, protein: 28, carbs: 38, fat: 28, fiber: 1.9, sugar: 3.8, sodium: 300 },
-  { name: 'Shrimp meal', brand: 'Al Baik', servingDesc: '1 meal', calories: 720, protein: 34, carbs: 72, fat: 32, fiber: 0.0, sugar: 0.0, sodium: 105 },
+  { name: 'Shrimp meal', brand: 'Al Baik', servingDesc: '1 meal', calories: 720, protein: 34, carbs: 72, fat: 32, fiber: 2.0, sugar: 2.0, sodium: 105 },
   { name: 'Fries', brand: 'Al Baik', servingDesc: '1 regular', calories: 320, protein: 4, carbs: 42, fat: 15, fiber: 4.2, sugar: 1.3, sodium: 290 },
   { name: 'Chicken sandwich', brand: 'Al Baik', servingDesc: '1 sandwich', calories: 430, protein: 24, carbs: 42, fat: 19, fiber: 2.5, sugar: 2.5, sodium: 575 },
 
   // Texas Chicken / Popeyes
   { name: 'Tender sandwich', brand: 'Texas Chicken', servingDesc: '1 sandwich', calories: 490, protein: 26, carbs: 46, fat: 22, fiber: 2.8, sugar: 2.8, sodium: 575 },
-  { name: 'Honey Butter Biscuit', brand: 'Texas Chicken', servingDesc: '1 biscuit', calories: 300, protein: 4, carbs: 34, fat: 16, fiber: 0.0, sugar: 0.0, sodium: 5 },
+  { name: 'Honey Butter Biscuit', brand: 'Texas Chicken', servingDesc: '1 biscuit', calories: 300, protein: 4, carbs: 34, fat: 16, fiber: 1.0, sugar: 11.0, sodium: 5 },
   { name: 'Wings, 5 pcs', brand: 'Texas Chicken', servingDesc: '5 wings', calories: 520, protein: 32, carbs: 24, fat: 33, fiber: 0.5, sugar: 0.5, sodium: 460 },
   { name: 'Spicy tenders, 3 pcs', brand: 'Popeyes', servingDesc: '3 pieces', calories: 400, protein: 30, carbs: 22, fat: 21, fiber: 1.1, sugar: 2.2, sodium: 230 },
   { name: 'Cajun Fries, regular', brand: 'Popeyes', servingDesc: '1 regular', calories: 310, protein: 4, carbs: 41, fat: 15, fiber: 4.1, sugar: 1.2, sodium: 290 },
@@ -634,7 +634,7 @@ const RESTAURANT_DB = [
 
   // Subway
   { name: 'Italian BMT, 6 inch', brand: 'Subway', servingDesc: '1 sub', calories: 410, protein: 20, carbs: 46, fat: 16, fiber: 2.8, sugar: 2.8, sodium: 575 },
-  { name: 'Tuna, 6 inch', brand: 'Subway', servingDesc: '1 sub', calories: 480, protein: 20, carbs: 44, fat: 25, fiber: 0.0, sugar: 0.0, sodium: 105 },
+  { name: 'Tuna, 6 inch', brand: 'Subway', servingDesc: '1 sub', calories: 480, protein: 20, carbs: 44, fat: 25, fiber: 3.0, sugar: 5.0, sodium: 105 },
   { name: 'Veggie Delite, 6 inch', brand: 'Subway', servingDesc: '1 sub', calories: 230, protein: 9, carbs: 44, fat: 2.5, fiber: 2.2, sugar: 4.4, sodium: 230 },
   { name: 'Chicken Tikka, 6 inch', brand: 'Subway', servingDesc: '1 sub', calories: 350, protein: 25, carbs: 47, fat: 6, fiber: 3.8, sugar: 1.9, sodium: 460 },
   { name: 'Meatball Marinara, 6 inch', brand: 'Subway', servingDesc: '1 sub', calories: 480, protein: 21, carbs: 59, fat: 18, fiber: 2.4, sugar: 1.8, sodium: 520 },
@@ -698,25 +698,25 @@ const RESTAURANT_DB = [
   { name: 'Chicken Pad See Ew', brand: 'Thai', servingDesc: '1 plate', calories: 700, protein: 30, carbs: 88, fat: 24, fiber: 4.4, sugar: 8.8, sodium: 400 },
   { name: 'Chicken satay, 4 skewers', brand: 'Thai', servingDesc: '4 skewers', calories: 340, protein: 32, carbs: 12, fat: 18, fiber: 0.6, sugar: 1.2, sodium: 230 },
   { name: 'Chicken lettuce wraps', brand: 'P.F. Chang’s', servingDesc: '1 starter', calories: 620, protein: 28, carbs: 42, fat: 36, fiber: 10.5, sugar: 6.3, sodium: 35 },
-  { name: 'Mongolian beef', brand: 'P.F. Chang’s', servingDesc: '1 plate', calories: 810, protein: 42, carbs: 62, fat: 42, fiber: 0.0, sugar: 0.0, sodium: 75 },
+  { name: 'Mongolian beef', brand: 'P.F. Chang’s', servingDesc: '1 plate', calories: 810, protein: 42, carbs: 62, fat: 42, fiber: 2.0, sugar: 22.0, sodium: 75 },
   { name: 'Salmon sashimi, 6 pcs', brand: 'Japanese', servingDesc: '6 pieces', calories: 180, protein: 24, carbs: 0, fat: 9, fiber: 0.0, sugar: 0.0, sodium: 460 },
   { name: 'Dragon roll, 8 pcs', brand: 'Japanese', servingDesc: '8 pieces', calories: 520, protein: 20, carbs: 62, fat: 20, fiber: 3.1, sugar: 6.2, sodium: 300 },
   { name: 'Chicken katsu curry with rice', brand: 'Japanese', servingDesc: '1 plate', calories: 880, protein: 38, carbs: 108, fat: 32, fiber: 8.6, sugar: 8.6, sodium: 745 },
-  { name: 'Beef pho', brand: 'Vietnamese', servingDesc: '1 bowl', calories: 450, protein: 30, carbs: 60, fat: 9, fiber: 0.0, sugar: 0.0, sodium: 75 },
+  { name: 'Beef pho', brand: 'Vietnamese', servingDesc: '1 bowl', calories: 450, protein: 30, carbs: 60, fat: 9, fiber: 2.0, sugar: 4.0, sodium: 75 },
   { name: 'Banh mi, chicken', brand: 'Vietnamese', servingDesc: '1 sandwich', calories: 480, protein: 24, carbs: 58, fat: 17, fiber: 2.9, sugar: 5.8, sodium: 275 },
 
   // Indian / Pakistani restaurants
   { name: 'Mutton karahi', brand: 'Ravi', servingDesc: '1 plate', calories: 700, protein: 42, carbs: 18, fat: 52, fiber: 1.4, sugar: 1.4, sodium: 745 },
   { name: 'Daal fry', brand: 'Ravi', servingDesc: '1 bowl', calories: 280, protein: 13, carbs: 34, fat: 10, fiber: 11.9, sugar: 1.7, sodium: 370 },
   { name: 'Chicken tikka, 4 pcs', brand: 'Ravi', servingDesc: '4 pieces', calories: 420, protein: 48, carbs: 6, fat: 22, fiber: 0.5, sugar: 0.2, sodium: 460 },
-  { name: 'Butter naan', brand: 'Ravi', servingDesc: '1 piece', calories: 300, protein: 8, carbs: 46, fat: 9, fiber: 0.0, sugar: 0.0, sodium: 5 },
+  { name: 'Butter naan', brand: 'Ravi', servingDesc: '1 piece', calories: 300, protein: 8, carbs: 46, fat: 9, fiber: 2.0, sugar: 3.0, sodium: 5 },
   { name: 'Mutton biryani, restaurant portion', brand: 'Indian', servingDesc: '1 plate', calories: 900, protein: 40, carbs: 96, fat: 40, fiber: 2.9, sugar: 1.9, sodium: 435 },
   { name: 'Paneer butter masala with naan', brand: 'Indian', servingDesc: '1 meal', calories: 850, protein: 26, carbs: 82, fat: 46, fiber: 6.6, sugar: 6.6, sodium: 745 },
   { name: 'Masala dosa', brand: 'Indian', servingDesc: '1 dosa', calories: 390, protein: 8, carbs: 58, fat: 14, fiber: 4.6, sugar: 4.6, sodium: 745 },
   { name: 'Chicken 65', brand: 'Indian', servingDesc: '1 plate', calories: 480, protein: 34, carbs: 22, fat: 28, fiber: 1.1, sugar: 2.2, sodium: 275 },
   { name: 'Tandoori chicken, half', brand: 'Indian', servingDesc: '1/2 chicken', calories: 520, protein: 62, carbs: 6, fat: 27, fiber: 0.3, sugar: 0.6, sodium: 300 },
   { name: 'Fish curry meal', brand: 'Calicut Paragon', servingDesc: '1 meal', calories: 720, protein: 38, carbs: 76, fat: 28, fiber: 6.1, sugar: 6.1, sodium: 745 },
-  { name: 'Kerala parotta with beef', brand: 'Calicut Paragon', servingDesc: '1 plate', calories: 780, protein: 34, carbs: 76, fat: 38, fiber: 0.0, sugar: 0.0, sodium: 75 },
+  { name: 'Kerala parotta with beef', brand: 'Calicut Paragon', servingDesc: '1 plate', calories: 780, protein: 34, carbs: 76, fat: 38, fiber: 3.0, sugar: 4.0, sodium: 75 },
 
   // Lebanese / Arabic restaurants
   { name: 'Zaatar manakish', brand: 'Zaatar w Zeit', servingDesc: '1 piece', calories: 350, protein: 8, carbs: 46, fat: 15, fiber: 2.8, sugar: 2.8, sodium: 435 },
@@ -739,7 +739,7 @@ const RESTAURANT_DB = [
   { name: 'Prawns with rice', brand: 'Bu Qtair', servingDesc: '1 plate', calories: 560, protein: 38, carbs: 60, fat: 18, fiber: 1.8, sugar: 1.2, sodium: 435 },
   { name: 'Fish curry with rice', brand: 'Bu Qtair', servingDesc: '1 plate', calories: 640, protein: 40, carbs: 68, fat: 22, fiber: 5.4, sugar: 5.4, sodium: 745 },
   { name: 'Grilled hammour with rice', brand: 'Seafood', servingDesc: '1 plate', calories: 580, protein: 44, carbs: 56, fat: 18, fiber: 1.7, sugar: 1.1, sodium: 435 },
-  { name: 'Fish and chips', brand: 'Seafood', servingDesc: '1 plate', calories: 840, protein: 32, carbs: 88, fat: 40, fiber: 0.0, sugar: 0.0, sodium: 105 },
+  { name: 'Fish and chips', brand: 'Seafood', servingDesc: '1 plate', calories: 840, protein: 32, carbs: 88, fat: 40, fiber: 5.0, sugar: 1.0, sodium: 105 },
 
   // Casual dining
   { name: 'Chicken Crispers', brand: 'Chili’s', servingDesc: '1 plate', calories: 1100, protein: 42, carbs: 92, fat: 62, fiber: 4.6, sugar: 9.2, sodium: 630 },
@@ -758,12 +758,12 @@ const RESTAURANT_DB = [
   { name: 'Caffe Mocha, grande', brand: 'Starbucks', servingDesc: '1 grande', calories: 370, protein: 14, carbs: 44, fat: 15, fiber: 0.0, sugar: 15.4, sodium: 15 },
   { name: 'Cappuccino, grande', brand: 'Starbucks', servingDesc: '1 grande', calories: 140, protein: 9, carbs: 14, fat: 5, fiber: 0.0, sugar: 4.9, sodium: 15 },
   { name: 'Chicken & mushroom panini', brand: 'Starbucks', servingDesc: '1 panini', calories: 420, protein: 26, carbs: 44, fat: 16, fiber: 11.0, sugar: 6.6, sodium: 35 },
-  { name: 'Butter croissant', brand: 'Starbucks', servingDesc: '1 croissant', calories: 260, protein: 6, carbs: 28, fat: 14, fiber: 0.0, sugar: 0.0, sodium: 5 },
+  { name: 'Butter croissant', brand: 'Starbucks', servingDesc: '1 croissant', calories: 260, protein: 6, carbs: 28, fat: 14, fiber: 1.5, sugar: 6.0, sodium: 5 },
   { name: 'Latte, medium', brand: 'Costa', servingDesc: '1 medium', calories: 190, protein: 11, carbs: 17, fat: 9, fiber: 0.0, sugar: 5.9, sodium: 15 },
   { name: 'Chicken salad sandwich', brand: 'Costa', servingDesc: '1 sandwich', calories: 380, protein: 24, carbs: 42, fat: 13, fiber: 2.5, sugar: 2.5, sodium: 575 },
   { name: 'Belgian chocolate cake', brand: 'Costa', servingDesc: '1 slice', calories: 490, protein: 6, carbs: 58, fat: 26, fiber: 1.7, sugar: 29.0, sodium: 290 },
   { name: 'Iced Capp, medium', brand: 'Tim Hortons', servingDesc: '1 medium', calories: 320, protein: 6, carbs: 50, fat: 11, fiber: 0.0, sugar: 17.5, sodium: 15 },
-  { name: 'Turkey bacon club', brand: 'Tim Hortons', servingDesc: '1 sandwich', calories: 470, protein: 30, carbs: 48, fat: 17, fiber: 0.0, sugar: 0.0, sodium: 85 },
+  { name: 'Turkey bacon club', brand: 'Tim Hortons', servingDesc: '1 sandwich', calories: 470, protein: 30, carbs: 48, fat: 17, fiber: 3.0, sugar: 5.0, sodium: 85 },
   { name: 'Bagel with cream cheese', brand: 'Tim Hortons', servingDesc: '1 bagel', calories: 400, protein: 13, carbs: 58, fat: 13, fiber: 0.0, sugar: 8.7, sodium: 460 },
   { name: 'Timbits, 5 pcs', brand: 'Tim Hortons', servingDesc: '5 pieces', calories: 350, protein: 5, carbs: 45, fat: 17, fiber: 2.2, sugar: 4.5, sodium: 230 },
   { name: 'Original Glazed donut', brand: 'Krispy Kreme', servingDesc: '1 donut', calories: 190, protein: 3, carbs: 22, fat: 11, fiber: 0.7, sugar: 11.0, sodium: 290 },
@@ -777,7 +777,7 @@ const RESTAURANT_DB = [
   { name: 'Spanish latte', brand: '% Arabica', servingDesc: '1 cup', calories: 240, protein: 8, carbs: 30, fat: 9, fiber: 0.0, sugar: 10.5, sodium: 15 },
 
   // Healthy / meal-prep
-  { name: 'Grilled salmon meal', brand: 'Kcal', servingDesc: '1 meal', calories: 480, protein: 36, carbs: 40, fat: 18, fiber: 0.0, sugar: 0.0, sodium: 105 },
+  { name: 'Grilled salmon meal', brand: 'Kcal', servingDesc: '1 meal', calories: 480, protein: 36, carbs: 40, fat: 18, fiber: 4.0, sugar: 3.0, sodium: 105 },
   { name: 'Beef burrito bowl, lean', brand: 'Kcal', servingDesc: '1 bowl', calories: 520, protein: 38, carbs: 52, fat: 16, fiber: 4.2, sugar: 2.1, sodium: 460 },
   { name: 'Protein pancakes', brand: 'Kcal', servingDesc: '1 plate', calories: 420, protein: 28, carbs: 52, fat: 10, fiber: 2.6, sugar: 5.2, sodium: 240 },
   { name: 'Chicken quinoa bowl', brand: 'Right Bite', servingDesc: '1 bowl', calories: 430, protein: 34, carbs: 44, fat: 12, fiber: 6.2, sugar: 2.2, sodium: 5 },
@@ -794,9 +794,9 @@ const RESTAURANT_DB = [
   { name: 'Chicken shawarma meal with fries', brand: 'Shawarma shop', servingDesc: '1 meal', calories: 820, protein: 34, carbs: 82, fat: 38, fiber: 6.6, sugar: 3.3, sodium: 565 },
   { name: 'Arabic mixed grill with rice', brand: 'Grill house', servingDesc: '1 plate', calories: 950, protein: 62, carbs: 72, fat: 46, fiber: 2.2, sugar: 1.4, sodium: 435 },
   { name: 'Chicken musakhan', brand: 'Levantine', servingDesc: '1 plate', calories: 720, protein: 42, carbs: 62, fat: 32, fiber: 3.1, sugar: 6.2, sodium: 415 },
-  { name: 'Lamb ouzi', brand: 'Emirati', servingDesc: '1 plate', calories: 880, protein: 44, carbs: 82, fat: 40, fiber: 0.0, sugar: 0.0, sodium: 75 },
+  { name: 'Lamb ouzi', brand: 'Emirati', servingDesc: '1 plate', calories: 880, protein: 44, carbs: 82, fat: 40, fiber: 3.0, sugar: 4.0, sodium: 75 },
   { name: 'Chicken saloona with rice', brand: 'Emirati', servingDesc: '1 plate', calories: 620, protein: 34, carbs: 70, fat: 22, fiber: 2.1, sugar: 1.4, sodium: 435 },
-  { name: 'Machboos rubyan (prawn)', brand: 'Emirati', servingDesc: '1 plate', calories: 640, protein: 32, carbs: 78, fat: 20, fiber: 0.0, sugar: 0.0, sodium: 105 },
+  { name: 'Machboos rubyan (prawn)', brand: 'Emirati', servingDesc: '1 plate', calories: 640, protein: 32, carbs: 78, fat: 20, fiber: 2.5, sugar: 3.0, sodium: 105 },
   { name: 'Chicken shish barak', brand: 'Levantine', servingDesc: '1 bowl', calories: 520, protein: 24, carbs: 48, fat: 26, fiber: 2.4, sugar: 4.8, sodium: 300 },
   { name: 'Maqluba', brand: 'Levantine', servingDesc: '1 plate', calories: 700, protein: 30, carbs: 84, fat: 28, fiber: 8.4, sugar: 2.5, sodium: 575 },
   { name: 'Falafel wrap', brand: 'Just Falafel', servingDesc: '1 wrap', calories: 480, protein: 14, carbs: 60, fat: 20, fiber: 4.8, sugar: 2.4, sodium: 460 },
@@ -815,14 +815,14 @@ const RESTAURANT_DB = [
   { name: 'Chicken caesar salad', brand: 'SaladBoxx', servingDesc: '1 bowl', calories: 390, protein: 32, carbs: 18, fat: 22, fiber: 4.5, sugar: 2.7, sodium: 35 },
   { name: 'Falafel salad bowl', brand: 'SaladBoxx', servingDesc: '1 bowl', calories: 440, protein: 16, carbs: 48, fat: 21, fiber: 3.8, sugar: 1.9, sodium: 460 },
   { name: 'Chicken shawarma bowl', brand: 'Under500', servingDesc: '1 bowl', calories: 470, protein: 38, carbs: 42, fat: 16, fiber: 3.4, sugar: 1.7, sodium: 460 },
-  { name: 'Beef lasagne, light', brand: 'Under500', servingDesc: '1 portion', calories: 480, protein: 32, carbs: 44, fat: 18, fiber: 0.0, sugar: 0.0, sodium: 75 },
+  { name: 'Beef lasagne, light', brand: 'Under500', servingDesc: '1 portion', calories: 480, protein: 32, carbs: 44, fat: 18, fiber: 3.0, sugar: 7.0, sodium: 75 },
   { name: 'Chicken avocado sandwich', brand: 'Circle Cafe', servingDesc: '1 sandwich', calories: 560, protein: 30, carbs: 48, fat: 27, fiber: 2.9, sugar: 2.9, sodium: 575 },
   { name: 'Breakfast burrito', brand: 'Circle Cafe', servingDesc: '1 burrito', calories: 640, protein: 28, carbs: 58, fat: 32, fiber: 4.6, sugar: 2.3, sodium: 460 },
   { name: 'Chicken shawarma pizza, 2 slices', brand: 'Pizza Hut', servingDesc: '2 slices', calories: 540, protein: 26, carbs: 58, fat: 22, fiber: 4.6, sugar: 2.3, sodium: 460 },
   { name: 'Cheesy bites pizza, 2 slices', brand: 'Pizza Hut', servingDesc: '2 slices', calories: 620, protein: 26, carbs: 62, fat: 30, fiber: 3.7, sugar: 3.1, sodium: 520 },
   { name: 'Chicken tikka pizza, 2 slices', brand: 'Domino’s', servingDesc: '2 slices', calories: 520, protein: 25, carbs: 58, fat: 20, fiber: 4.6, sugar: 2.3, sodium: 460 },
   { name: 'Grilled chicken sandwich', brand: 'Chili’s', servingDesc: '1 sandwich', calories: 640, protein: 44, carbs: 52, fat: 27, fiber: 3.1, sugar: 3.1, sodium: 575 },
-  { name: 'Beef fajita bowl', brand: 'Chili’s', servingDesc: '1 bowl', calories: 720, protein: 44, carbs: 58, fat: 34, fiber: 0.0, sugar: 0.0, sodium: 75 },
+  { name: 'Beef fajita bowl', brand: 'Chili’s', servingDesc: '1 bowl', calories: 720, protein: 44, carbs: 58, fat: 34, fiber: 8.0, sugar: 5.0, sodium: 75 },
   { name: 'Chicken shawarma sandwich', brand: 'Zaatar w Zeit', servingDesc: '1 sandwich', calories: 520, protein: 26, carbs: 50, fat: 24, fiber: 4.0, sugar: 2.0, sodium: 460 },
   { name: 'Cheese fatayer, 2 pcs', brand: 'Zaatar w Zeit', servingDesc: '2 pieces', calories: 380, protein: 14, carbs: 42, fat: 17, fiber: 0.0, sugar: 6.3, sodium: 460 },
   { name: 'Chicken nuggets meal, 6 pcs', brand: 'McDonald’s', servingDesc: '1 meal', calories: 690, protein: 24, carbs: 84, fat: 30, fiber: 4.2, sugar: 8.4, sodium: 395 },
@@ -832,7 +832,7 @@ const RESTAURANT_DB = [
   { name: 'Chicken shawarma, 2 sandwiches', brand: 'Shawarma shop', servingDesc: '2 sandwiches', calories: 960, protein: 54, carbs: 90, fat: 42, fiber: 7.2, sugar: 3.6, sodium: 660 },
   { name: 'Karak and croissant', brand: 'Café', servingDesc: '1 set', calories: 400, protein: 10, carbs: 48, fat: 19, fiber: 1.4, sugar: 24.0, sodium: 290 },
   { name: 'Chicken mandi, half', brand: 'Yemeni', servingDesc: '1/2 portion', calories: 520, protein: 32, carbs: 56, fat: 18, fiber: 1.7, sugar: 1.1, sodium: 435 },
-  { name: 'Lamb haneeth', brand: 'Yemeni', servingDesc: '1 plate', calories: 840, protein: 46, carbs: 74, fat: 38, fiber: 0.0, sugar: 0.0, sodium: 75 },
+  { name: 'Lamb haneeth', brand: 'Yemeni', servingDesc: '1 plate', calories: 840, protein: 46, carbs: 74, fat: 38, fiber: 2.5, sugar: 3.0, sodium: 75 },
   { name: 'Fahsa', brand: 'Yemeni', servingDesc: '1 bowl', calories: 520, protein: 38, carbs: 18, fat: 32, fiber: 2.2, sugar: 0.9, sodium: 575 },
   { name: 'Chicken kabsa, half portion', brand: 'Saudi', servingDesc: '1/2 plate', calories: 420, protein: 26, carbs: 48, fat: 14, fiber: 1.4, sugar: 1.0, sodium: 435 },
   { name: 'Jareesh with lamb', brand: 'Saudi', servingDesc: '1 bowl', calories: 480, protein: 26, carbs: 52, fat: 18, fiber: 5.2, sugar: 1.6, sodium: 575 },
