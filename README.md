@@ -22,11 +22,11 @@ bio you can set. Nothing leaves your phone unless you join a group.
   Includes protein/carb/fat targets from an adjustable macro split.
 - **Food diary** — log meals (breakfast/lunch/dinner/snacks) for any day,
   see calories and macros remaining against your budget, and log exercise
-  to add calories back. Each meal shows a running total of protein, carbs,
-  fat, fiber, sugar and sodium for what's logged in it so far. Tap the
-  protein/carbs/fat bars for the full picture: a donut chart of today's
-  calorie split plus fiber, sugar and sodium, each against a general daily
-  guideline.
+  to add calories back. Tap the protein/carbs/fat bars for the day's full
+  picture: a donut chart of today's calorie split plus fiber, sugar and
+  sodium, each against a general daily guideline. Tap "Summary" on any
+  meal for the same breakdown scoped to just that meal, with the items
+  in it listed underneath.
 - **Fuller nutrition** — protein, carbs and fat, plus fiber, sugar and
   sodium, on every food you log, save, or build into a recipe. Branded
   lookups pull the real figures from Open Food Facts; the built-in database

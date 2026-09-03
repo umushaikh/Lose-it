@@ -76,8 +76,7 @@
               <button type="button" id="meal-breakfast-share-btn" class="icon-btn small meal-share-btn hidden" data-meal="breakfast" title="Share this meal to the group">↗</button>
               <button class="icon-btn add-meal-btn" data-meal="breakfast" title="Add food">+</button></div>
           </div>
-          <button type="button" id="meal-breakfast-summary-btn" class="meal-summary-toggle hidden" data-meal="breakfast">Summary <span class="chev-mini">&#9662;</span></button>
-          <div id="meal-breakfast-macros" class="meal-macros hidden"></div>
+          <button type="button" id="meal-breakfast-summary-btn" class="meal-summary-toggle hidden" data-meal="breakfast">Summary <span class="chev-mini">&#8250;</span></button>
           <div id="meal-breakfast-list" class="list"></div>
         </div>
 
@@ -88,8 +87,7 @@
               <button type="button" id="meal-lunch-share-btn" class="icon-btn small meal-share-btn hidden" data-meal="lunch" title="Share this meal to the group">↗</button>
               <button class="icon-btn add-meal-btn" data-meal="lunch" title="Add food">+</button></div>
           </div>
-          <button type="button" id="meal-lunch-summary-btn" class="meal-summary-toggle hidden" data-meal="lunch">Summary <span class="chev-mini">&#9662;</span></button>
-          <div id="meal-lunch-macros" class="meal-macros hidden"></div>
+          <button type="button" id="meal-lunch-summary-btn" class="meal-summary-toggle hidden" data-meal="lunch">Summary <span class="chev-mini">&#8250;</span></button>
           <div id="meal-lunch-list" class="list"></div>
         </div>
 
@@ -100,8 +98,7 @@
               <button type="button" id="meal-dinner-share-btn" class="icon-btn small meal-share-btn hidden" data-meal="dinner" title="Share this meal to the group">↗</button>
               <button class="icon-btn add-meal-btn" data-meal="dinner" title="Add food">+</button></div>
           </div>
-          <button type="button" id="meal-dinner-summary-btn" class="meal-summary-toggle hidden" data-meal="dinner">Summary <span class="chev-mini">&#9662;</span></button>
-          <div id="meal-dinner-macros" class="meal-macros hidden"></div>
+          <button type="button" id="meal-dinner-summary-btn" class="meal-summary-toggle hidden" data-meal="dinner">Summary <span class="chev-mini">&#8250;</span></button>
           <div id="meal-dinner-list" class="list"></div>
         </div>
 
@@ -112,8 +109,7 @@
               <button type="button" id="meal-snacks-share-btn" class="icon-btn small meal-share-btn hidden" data-meal="snacks" title="Share this meal to the group">↗</button>
               <button class="icon-btn add-meal-btn" data-meal="snacks" title="Add food">+</button></div>
           </div>
-          <button type="button" id="meal-snacks-summary-btn" class="meal-summary-toggle hidden" data-meal="snacks">Summary <span class="chev-mini">&#9662;</span></button>
-          <div id="meal-snacks-macros" class="meal-macros hidden"></div>
+          <button type="button" id="meal-snacks-summary-btn" class="meal-summary-toggle hidden" data-meal="snacks">Summary <span class="chev-mini">&#8250;</span></button>
           <div id="meal-snacks-list" class="list"></div>
         </div>
 
@@ -450,7 +446,6 @@
   </div>
 </div>
 
-<!-- Add exercise -->
 <!-- Full macro breakdown -->
 <div id="macro-detail-modal" class="modal hidden" data-close-modal="macro-detail-modal">
   <div class="modal-sheet" onclick="event.stopPropagation()">
@@ -459,19 +454,42 @@
       <button class="icon-btn" data-close-modal="macro-detail-modal">✕</button>
     </div>
     <div class="macro-pie-wrap">
-      <svg viewBox="0 0 200 200" class="macro-pie-svg"><g id="macro-pie"></g></svg>
+      <svg viewBox="0 0 200 200" class="macro-pie-svg"><g id="macro-detail-pie"></g></svg>
       <div class="macro-pie-center">
-        <div id="macro-pie-calories" class="macro-pie-calories">0</div>
+        <div id="macro-detail-pie-calories" class="macro-pie-calories">0</div>
         <div class="macro-pie-label">cal logged</div>
       </div>
     </div>
-    <div id="macro-pie-empty" class="empty-hint macro-pie-empty hidden">Nothing logged yet today.</div>
+    <div id="macro-detail-pie-empty" class="empty-hint macro-pie-empty hidden">Nothing logged yet today.</div>
     <div id="macro-detail-main"></div>
     <div class="macro-detail-section-title">Also today</div>
     <div id="macro-detail-extra"></div>
   </div>
 </div>
 
+<!-- One meal's full macro breakdown, opened by its "Summary" button -->
+<div id="meal-detail-modal" class="modal hidden" data-close-modal="meal-detail-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="meal-detail-title">Meal nutrients</h3>
+      <button class="icon-btn" data-close-modal="meal-detail-modal">✕</button>
+    </div>
+    <div class="macro-pie-wrap">
+      <svg viewBox="0 0 200 200" class="macro-pie-svg"><g id="meal-detail-pie"></g></svg>
+      <div class="macro-pie-center">
+        <div id="meal-detail-pie-calories" class="macro-pie-calories">0</div>
+        <div class="macro-pie-label">cal</div>
+      </div>
+    </div>
+    <div id="meal-detail-main"></div>
+    <div class="macro-detail-section-title">Also in this meal</div>
+    <div id="meal-detail-extra"></div>
+    <h4 id="meal-detail-heading" class="meal-detail-heading"></h4>
+    <div id="meal-detail-items" class="list"></div>
+  </div>
+</div>
+
+<!-- Add exercise -->
 <div id="add-exercise-modal" class="modal hidden" data-close-modal="add-exercise-modal">
   <div class="modal-sheet" onclick="event.stopPropagation()">
     <div class="modal-head">

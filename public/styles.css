@@ -321,16 +321,9 @@ body {
   cursor: pointer;
 }
 .meal-summary-toggle:active { transform: scale(0.96); }
-.meal-summary-toggle .chev-mini { font-size: 9px; transition: transform 0.15s ease; }
-.meal-summary-toggle.open .chev-mini { transform: rotate(180deg); }
-.meal-macros {
-  font-size: 11.5px;
-  color: var(--text-dim);
-  background: var(--card-2);
-  border-radius: var(--r-md);
-  padding: 8px 10px;
-  margin: 0 0 8px;
-}
+.meal-summary-toggle .chev-mini { font-size: 13px; line-height: 1; }
+.meal-detail-heading { font-size: 15px; font-weight: 700; margin: 18px 0 4px; }
+.meal-detail-item-cal { font-weight: 700; font-size: 14px; color: var(--text-dim); flex-shrink: 0; }
 
 .list { display: flex; flex-direction: column; }
 .scroll-list {

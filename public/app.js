@@ -67,7 +67,6 @@ const state = {
   foods: [],
   currentDate: todayStr(),
   diaryDay: null,
-  mealSummaryOpen: {}, // { breakfast: true } while its macro line is expanded
   exerciseDay: [],
   weightLog: [],
   activeTab: 'today',
@@ -375,21 +374,11 @@ function renderToday() {
     document.getElementById(`meal-${m.key}-suggested`).textContent =
       suggested > 0 ? `${suggested.toLocaleString()} calories suggested` : '';
 
-    // The macro line only ever shows once someone taps "Summary" for this
-    // meal - state.mealSummaryOpen tracks that per meal key so it survives
-    // the re-renders every diary change triggers, but resets on reload.
-    const summaryBtn = document.getElementById(`meal-${m.key}-summary-btn`);
-    const macrosEl = document.getElementById(`meal-${m.key}-macros`);
-    summaryBtn.classList.toggle('hidden', items.length === 0);
-    const isOpen = items.length > 0 && Boolean(state.mealSummaryOpen[m.key]);
-    summaryBtn.classList.toggle('open', isOpen);
-    macrosEl.classList.toggle('hidden', !isOpen);
-    if (isOpen) {
-      const s = sumMeal(items);
-      macrosEl.textContent =
-        `P${Math.round(s.protein)} · C${Math.round(s.carbs)} · F${Math.round(s.fat)} · ` +
-        `Fiber ${Math.round(s.fiber)} · Sugar ${Math.round(s.sugar)} · Na ${Math.round(s.sodium)}mg`;
-    }
+    // Tapping "Summary" opens the full per-meal breakdown (a donut chart plus
+    // fiber/sugar/sodium, same treatment as the day's own macro bars) rather
+    // than expanding anything in place, so there's nothing to track between
+    // renders here beyond whether the button shows at all.
+    document.getElementById(`meal-${m.key}-summary-btn`).classList.toggle('hidden', items.length === 0);
 
     // Sharing needs a group to share to and something worth sharing.
     const shareBtn = document.getElementById(`meal-${m.key}-share-btn`);
@@ -490,25 +479,17 @@ function buildMacroPie(segments) {
   }).join('');
 }
 
-// The full macro breakdown "page" - a donut of today's protein/carb/fat
-// calorie split plus fiber, sugar and sodium, which the compact bars on the
-// Today tab have no room for. Computed fresh at open time from the same
-// day totals and goals the bars themselves use, so the two never disagree.
-function renderMacroDetail() {
-  const goals = computeGoals(state.settings);
-  const eaten = sumDay(state.diaryDay);
-  const segments = [
-    { key: 'protein', label: 'Protein', grams: eaten.protein, target: goals.macros.proteinG, value: eaten.protein * 4, color: 'var(--protein)' },
-    { key: 'carbs', label: 'Carbs', grams: eaten.carbs, target: goals.macros.carbsG, value: eaten.carbs * 4, color: 'var(--carbs)' },
-    { key: 'fat', label: 'Fat', grams: eaten.fat, target: goals.macros.fatG, value: eaten.fat * 9, color: 'var(--fat)' }
-  ];
+// Fills in a donut chart plus its protein/carbs/fat legend rows, given
+// element ids `${prefix}-pie`, `${prefix}-pie-calories`, `${prefix}-main`,
+// and (optionally, only the day view has one) `${prefix}-pie-empty`. Shared
+// by the day-level and per-meal breakdowns so the two can never drift apart.
+function renderMacroPieDetail(prefix, segments, totalCalories) {
   const totalMacroCal = segments.reduce((s, seg) => s + seg.value, 0);
+  document.getElementById(`${prefix}-pie`).innerHTML = buildMacroPie(segments);
+  document.getElementById(`${prefix}-pie-calories`).textContent = totalCalories.toLocaleString();
+  document.getElementById(`${prefix}-pie-empty`)?.classList.toggle('hidden', totalMacroCal > 0);
 
-  document.getElementById('macro-pie').innerHTML = buildMacroPie(segments);
-  document.getElementById('macro-pie-calories').textContent = eaten.calories.toLocaleString();
-  document.getElementById('macro-pie-empty').classList.toggle('hidden', totalMacroCal > 0);
-
-  document.getElementById('macro-detail-main').innerHTML = segments.map(seg => {
+  document.getElementById(`${prefix}-main`).innerHTML = segments.map(seg => {
     const pct = totalMacroCal > 0 ? Math.round((seg.value / totalMacroCal) * 100) : 0;
     return `
       <div class="macro-detail-row">
@@ -517,17 +498,85 @@ function renderMacroDetail() {
         <span class="macro-detail-value">${pct}% · <strong>${Math.round(seg.grams)}g</strong> / ${Math.round(seg.target)}g</span>
       </div>`;
   }).join('');
+}
 
+// Fiber/sugar/sodium rows with a general (not personalized - nothing here
+// computes a target for these) daily guideline for context. Shared by the
+// day-level and per-meal breakdowns.
+function renderExtraNutrientRows(containerId, { fiber, sugar, sodium }) {
   const EXTRA = [
-    { label: 'Fiber', value: `${eaten.fiber}g`, hint: 'General guideline: about 25–38g a day' },
-    { label: 'Sugar', value: `${eaten.sugar}g`, hint: 'WHO guideline: under about 50g a day' },
-    { label: 'Sodium', value: `${eaten.sodium.toLocaleString()}mg`, hint: 'General guideline: under 2,300mg a day' }
+    { label: 'Fiber', value: `${fiber}g`, hint: 'General guideline: about 25–38g a day' },
+    { label: 'Sugar', value: `${sugar}g`, hint: 'WHO guideline: under about 50g a day' },
+    { label: 'Sodium', value: `${sodium.toLocaleString()}mg`, hint: 'General guideline: under 2,300mg a day' }
   ];
-  document.getElementById('macro-detail-extra').innerHTML = EXTRA.map(e => `
+  document.getElementById(containerId).innerHTML = EXTRA.map(e => `
     <div class="macro-detail-extra-row">
       <div class="macro-detail-extra-head"><span>${e.label}</span><span>${e.value}</span></div>
       <div class="macro-detail-hint">${e.hint}</div>
     </div>`).join('');
+}
+
+// The full macro breakdown "page" - a donut of today's protein/carb/fat
+// calorie split plus fiber, sugar and sodium, which the compact bars on the
+// Today tab have no room for. Computed fresh at open time from the same
+// day totals and goals the bars themselves use, so the two never disagree.
+function renderMacroDetail() {
+  const goals = computeGoals(state.settings);
+  const eaten = sumDay(state.diaryDay);
+  const segments = [
+    { label: 'Protein', grams: eaten.protein, target: goals.macros.proteinG, value: eaten.protein * 4, color: 'var(--protein)' },
+    { label: 'Carbs', grams: eaten.carbs, target: goals.macros.carbsG, value: eaten.carbs * 4, color: 'var(--carbs)' },
+    { label: 'Fat', grams: eaten.fat, target: goals.macros.fatG, value: eaten.fat * 9, color: 'var(--fat)' }
+  ];
+  renderMacroPieDetail('macro-detail', segments, eaten.calories);
+  renderExtraNutrientRows('macro-detail-extra', eaten);
+}
+
+// Same breakdown as renderMacroDetail, but scoped to one meal: each macro's
+// target is that meal's share of the daily target (the same share already
+// used for "X calories suggested" on the meal card), and the items actually
+// logged in it are listed below, the way tapping into a meal's nutrition
+// panel does in other calorie trackers.
+function renderMealDetail(mealKey) {
+  const meal = MEALS.find(m => m.key === mealKey);
+  const items = state.diaryDay[mealKey] || [];
+  const raw = sumMeal(items);
+  const s = {
+    calories: Math.round(raw.calories),
+    protein: Math.round(raw.protein),
+    carbs: Math.round(raw.carbs),
+    fat: Math.round(raw.fat),
+    fiber: Math.round(raw.fiber * 10) / 10,
+    sugar: Math.round(raw.sugar * 10) / 10,
+    sodium: Math.round(raw.sodium)
+  };
+  const goals = computeGoals(state.settings);
+  const segments = [
+    { label: 'Protein', grams: s.protein, target: goals.macros.proteinG * meal.share, value: s.protein * 4, color: 'var(--protein)' },
+    { label: 'Carbs', grams: s.carbs, target: goals.macros.carbsG * meal.share, value: s.carbs * 4, color: 'var(--carbs)' },
+    { label: 'Fat', grams: s.fat, target: goals.macros.fatG * meal.share, value: s.fat * 9, color: 'var(--fat)' }
+  ];
+
+  document.getElementById('meal-detail-title').textContent = `${meal.label} nutrients`;
+  renderMacroPieDetail('meal-detail', segments, s.calories);
+  renderExtraNutrientRows('meal-detail-extra', s);
+
+  document.getElementById('meal-detail-heading').textContent = `${meal.label}: ${s.calories.toLocaleString()} calories`;
+  document.getElementById('meal-detail-items').innerHTML = items.map(i => {
+    const t = scaleNutrition(i, i.qty);
+    const grams = parseServingGrams(i.servingDesc);
+    const amount = grams
+      ? `${Math.round(i.qty * grams * 10) / 10} g`
+      : `${Math.round(i.qty * 100) / 100} × ${escapeHtml(i.servingDesc || 'serving')}`;
+    return `
+      <div class="entry-row">
+        <div class="entry-info">
+          <div class="entry-name">${foodEmoji(i.name)} ${escapeHtml(i.name)}</div>
+          <div class="entry-sub">${amount}</div>
+        </div>
+        <div class="meal-detail-item-cal">${t.calories.toLocaleString()}</div>
+      </div>`;
+  }).join('');
 }
 
 // Lists your saved foods and the whole built-in database together, so the
@@ -2198,9 +2247,8 @@ function wireEvents() {
     }
     const summaryBtn = e.target.closest('.meal-summary-toggle');
     if (summaryBtn) {
-      const key = summaryBtn.dataset.meal;
-      state.mealSummaryOpen[key] = !state.mealSummaryOpen[key];
-      renderToday();
+      renderMealDetail(summaryBtn.dataset.meal);
+      openModal('meal-detail-modal');
       return;
     }
     const mealShareBtn = e.target.closest('.meal-share-btn');
