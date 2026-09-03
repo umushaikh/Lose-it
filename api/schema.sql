@@ -65,26 +65,29 @@ CREATE TABLE IF NOT EXISTS photo_sizes (
   created_at  INTEGER NOT NULL
 );
 
--- One row per shared meal, keyed to the event that carries it in the feed.
--- A separate table rather than new columns on events, so this stays a plain
--- additive CREATE TABLE IF NOT EXISTS against a database that already exists
--- in the wild - SQLite/D1 can't add a column to an existing table
--- idempotently the way it can create one.
+-- One row per shared meal (a whole breakfast/lunch/dinner/snacks, not a
+-- single food), keyed to the event that carries it in the feed. A separate
+-- table rather than new columns on events, so this stays a plain additive
+-- CREATE TABLE IF NOT EXISTS against a database that already exists in the
+-- wild - SQLite/D1 can't add a column to an existing table idempotently the
+-- way it can create one.
 --
--- What lands here is the actual food someone logged - name, serving, full
--- macros - not just a day total. That is a real step up in what a group
--- sees about each other, and only happens when a member deliberately taps
--- Share; nothing here is automatic.
-CREATE TABLE IF NOT EXISTS meal_shares (
-  event_id     TEXT PRIMARY KEY,
-  name         TEXT NOT NULL,
-  serving_desc TEXT,
-  qty          REAL NOT NULL DEFAULT 1,
-  calories     INTEGER NOT NULL DEFAULT 0,
-  protein      REAL NOT NULL DEFAULT 0,
-  carbs        REAL NOT NULL DEFAULT 0,
-  fat          REAL NOT NULL DEFAULT 0,
-  fiber        REAL NOT NULL DEFAULT 0,
-  sugar        REAL NOT NULL DEFAULT 0,
-  sodium       REAL NOT NULL DEFAULT 0
+-- items_json holds the individual foods that made up the meal (name,
+-- serving, qty, full macros per item) so the group can see what was
+-- actually eaten, not just a total; the other columns are that list's sums,
+-- kept alongside it so the board can show a total without re-parsing JSON
+-- for every row. This is a real step up in what a group sees about each
+-- other beyond a day's totals, and only happens when a member deliberately
+-- taps Share; nothing here is automatic.
+CREATE TABLE IF NOT EXISTS shared_meals (
+  event_id    TEXT PRIMARY KEY,
+  meal_key    TEXT NOT NULL,
+  calories    INTEGER NOT NULL DEFAULT 0,
+  protein     REAL NOT NULL DEFAULT 0,
+  carbs       REAL NOT NULL DEFAULT 0,
+  fat         REAL NOT NULL DEFAULT 0,
+  fiber       REAL NOT NULL DEFAULT 0,
+  sugar       REAL NOT NULL DEFAULT 0,
+  sodium      REAL NOT NULL DEFAULT 0,
+  items_json  TEXT NOT NULL DEFAULT '[]'
 );

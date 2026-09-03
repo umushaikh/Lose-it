@@ -67,6 +67,7 @@ const state = {
   foods: [],
   currentDate: todayStr(),
   diaryDay: null,
+  mealSummaryOpen: {}, // { breakfast: true } while its macro line is expanded
   exerciseDay: [],
   weightLog: [],
   activeTab: 'today',
@@ -327,14 +328,24 @@ function renderToday() {
     document.getElementById(`meal-${m.key}-suggested`).textContent =
       suggested > 0 ? `${suggested.toLocaleString()} calories suggested` : '';
 
+    // The macro line only ever shows once someone taps "Summary" for this
+    // meal - state.mealSummaryOpen tracks that per meal key so it survives
+    // the re-renders every diary change triggers, but resets on reload.
+    const summaryBtn = document.getElementById(`meal-${m.key}-summary-btn`);
     const macrosEl = document.getElementById(`meal-${m.key}-macros`);
-    macrosEl.classList.toggle('hidden', items.length === 0);
-    if (items.length) {
+    summaryBtn.classList.toggle('hidden', items.length === 0);
+    const isOpen = items.length > 0 && Boolean(state.mealSummaryOpen[m.key]);
+    macrosEl.classList.toggle('hidden', !isOpen);
+    if (isOpen) {
       const s = sumMeal(items);
       macrosEl.textContent =
         `P${Math.round(s.protein)} · C${Math.round(s.carbs)} · F${Math.round(s.fat)} · ` +
         `Fiber ${Math.round(s.fiber)} · Sugar ${Math.round(s.sugar)} · Na ${Math.round(s.sodium)}mg`;
     }
+
+    // Sharing needs a group to share to and something worth sharing.
+    const shareBtn = document.getElementById(`meal-${m.key}-share-btn`);
+    shareBtn.classList.toggle('hidden', items.length === 0 || !(friends.group && friends.group.groupId));
     list.innerHTML = items.length
       ? items.map(i => {
         const t = scaleNutrition(i, i.qty);
@@ -342,14 +353,12 @@ function renderToday() {
         const amount = grams
           ? `${Math.round(i.qty * grams * 10) / 10} g`
           : `${Math.round(i.qty * 100) / 100} × ${escapeHtml(i.servingDesc || 'serving')}`;
-        const canShare = friends.group && friends.group.groupId;
         return `
         <div class="entry-row" data-entry-id="${i.id}" data-meal="${m.key}">
           <button type="button" class="entry-info entry-open" data-meal="${m.key}" data-entry-id="${i.id}">
             <div class="entry-name">${foodEmoji(i.name)} ${escapeHtml(i.name)}</div>
             <div class="entry-sub">${amount} · ${t.calories} cal · P${t.protein} C${t.carbs} F${t.fat}</div>
           </button>
-          ${canShare ? `<button class="icon-btn small share-entry-btn" data-meal="${m.key}" data-entry-id="${i.id}" title="Share to group">↗</button>` : ''}
           <button class="icon-btn small remove-entry-btn" data-meal="${m.key}" data-entry-id="${i.id}" title="Remove">✕</button>
         </div>`;
       }).join('')
@@ -1497,28 +1506,31 @@ function timeAgo(ms) {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-// Posts one logged item to the group feed as its own food - name, serving,
-// full macros - rather than folding it into the day's summary numbers. This
-// is a bigger privacy step than the day total is: a specific thing you ate
-// is now visible to the group, not just a count. It only ever happens from
-// this explicit tap, never automatically.
-async function shareMealToGroup(entry) {
+// Posts everything logged in one meal (breakfast/lunch/dinner/snacks) to the
+// group feed as a bundle - every item's name, serving and full macros, plus
+// the total. This is a bigger privacy step than the day total is: specific
+// foods you ate are now visible to the group, not just a count. It only
+// ever happens from this explicit tap, never automatically.
+async function shareMealToGroup(mealKey) {
   if (!(await groups.isJoined())) return;
+  const items = state.diaryDay[mealKey];
+  if (!items || !items.length) return;
   try {
     await groups.postEvent({
       kind: 'meal',
-      meal: {
-        name: entry.name,
-        servingDesc: entry.servingDesc || '1 serving',
-        qty: entry.qty,
-        calories: entry.calories,
-        protein: entry.protein,
-        carbs: entry.carbs,
-        fat: entry.fat,
-        fiber: entry.fiber,
-        sugar: entry.sugar,
-        sodium: entry.sodium
-      }
+      mealKey,
+      items: items.map(i => ({
+        name: i.name,
+        servingDesc: i.servingDesc || '1 serving',
+        qty: i.qty,
+        calories: i.calories,
+        protein: i.protein,
+        carbs: i.carbs,
+        fat: i.fat,
+        fiber: i.fiber,
+        sugar: i.sugar,
+        sodium: i.sodium
+      }))
     });
     if (state.activeTab === 'friends') refreshBoard();
   } catch (err) {
@@ -1660,13 +1672,19 @@ function renderFriends() {
             ${e.calories ? `<div class="feed-meta">${e.calories.toLocaleString()} cal</div>` : ''}
           </div>`;
       }
-      if (e.kind === 'meal' && e.meal) {
-        friends.mealShares[e.id] = e.meal;
+      if (e.kind === 'meal' && e.sharedMeal && e.sharedMeal.items.length) {
+        const sm = e.sharedMeal;
+        friends.mealShares[e.id] = sm;
+        const mealLabelText = MEALS.find(m => m.key === sm.mealKey)?.label || sm.mealKey;
+        const itemLines = sm.items.map(i =>
+          `<div class="shared-meal-item">${foodEmoji(i.name)} ${escapeHtml(i.name)}${i.qty !== 1 ? ` · ${i.qty}×` : ''}</div>`
+        ).join('');
         return `
           <div class="feed-item">
             <div class="feed-head"><strong>${who}</strong><span>${when}</span></div>
-            <div class="entry-name">${foodEmoji(e.meal.name)} ${escapeHtml(e.meal.name)}</div>
-            <div class="feed-meta">${e.meal.qty !== 1 ? `${e.meal.qty}× · ` : ''}${escapeHtml(e.meal.servingDesc || '')} · ${Math.round(e.meal.calories * e.meal.qty)} cal</div>
+            <div class="entry-name">${mealLabelText}</div>
+            <div class="shared-meal-items">${itemLines}</div>
+            <div class="feed-meta">${Math.round(sm.calories).toLocaleString()} cal · P${Math.round(sm.protein)} C${Math.round(sm.carbs)} F${Math.round(sm.fat)} · Fiber ${Math.round(sm.fiber)} · Sugar ${Math.round(sm.sugar)} · Na ${Math.round(sm.sodium)}mg</div>
             <button type="button" class="secondary-btn small add-shared-meal-btn" data-event-id="${e.id}">+ Add to my diary</button>
           </div>`;
       }
@@ -1763,13 +1781,19 @@ function wireFriends() {
     refreshBoard(true);
   });
 
-  document.getElementById('friends-feed').addEventListener('click', e => {
+  document.getElementById('friends-feed').addEventListener('click', async e => {
     const btn = e.target.closest('.add-shared-meal-btn');
     if (!btn) return;
-    const meal = friends.mealShares[btn.dataset.eventId];
-    if (!meal) return;
-    closeAllModals();
-    openLogFoodModal({ ...meal, source: 'shared' }, meal.qty || 1);
+    const sm = friends.mealShares[btn.dataset.eventId];
+    if (!sm || !sm.items.length) return;
+    const mealLabelText = MEALS.find(m => m.key === sm.mealKey)?.label || sm.mealKey;
+    if (!confirm(`Add all ${sm.items.length} item${sm.items.length === 1 ? '' : 's'} from this ${mealLabelText} to your own diary today?`)) return;
+    for (const item of sm.items) {
+      await db.addDiaryEntry(state.currentDate, sm.mealKey, item);
+    }
+    await loadDayData();
+    state.activeTab = 'today';
+    render();
   });
 
   document.getElementById('friends-invite-btn').addEventListener('click', () => {
@@ -1881,10 +1905,21 @@ function wireEvents() {
       if (entry) openEntryEditor(meal, entry);
       return;
     }
-    const shareBtn = e.target.closest('.share-entry-btn');
-    if (shareBtn) {
-      const entry = state.diaryDay[shareBtn.dataset.meal].find(i => i.id === shareBtn.dataset.entryId);
-      if (entry) await shareMealToGroup(entry);
+    const summaryBtn = e.target.closest('.meal-summary-toggle');
+    if (summaryBtn) {
+      const key = summaryBtn.dataset.meal;
+      state.mealSummaryOpen[key] = !state.mealSummaryOpen[key];
+      renderToday();
+      return;
+    }
+    const mealShareBtn = e.target.closest('.meal-share-btn');
+    if (mealShareBtn) {
+      const key = mealShareBtn.dataset.meal;
+      const count = state.diaryDay[key].length;
+      const label = MEALS.find(m => m.key === key)?.label || key;
+      if (confirm(`Share your ${label} (${count} item${count === 1 ? '' : 's'}) with the group?`)) {
+        await shareMealToGroup(key);
+      }
       return;
     }
     const removeBtn = e.target.closest('.remove-entry-btn');

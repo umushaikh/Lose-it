@@ -70,13 +70,14 @@ is.
   Cloudflare Worker and a D1 database on your own Cloudflare account, which
   costs nothing at this size. See `api/README.md`. Without it the app behaves
   exactly as it always has.
-  - **Share a meal** — tap the share icon on anything you've logged to post
-    that exact food to the group feed: name, serving, full nutrition. Anyone
-    in the group can tap it to add it straight to their own diary, at the
-    same amount or their own. This is a step up from the rest of Friends,
-    worth being clear about: everywhere else, only your day's totals leave
-    your phone; sharing a meal puts the specific food itself in front of the
-    group, and only happens when you deliberately tap Share.
+  - **Share a meal** — the share icon (↗) next to a meal's + button posts
+    that whole breakfast/lunch/dinner/snacks to the group feed: every item
+    in it, with full nutrition, plus the total. Anyone in the group can tap
+    it to add the whole thing to their own diary in one go. This is a step
+    up from the rest of Friends, worth being clear about: everywhere else,
+    only your day's totals leave your phone; sharing a meal puts the actual
+    foods you ate in front of the group, and only happens when you
+    deliberately tap Share.
 - **Backup & restore** — export/import your data as a JSON file. API keys and
   group credentials are deliberately left out of the file.
 - **Dark by default** — an OLED-black theme with rounded cards, an open-bottom
@@ -142,3 +143,8 @@ charge you (Workers and D1 stay on the free plan and just reject over-quota
 requests instead of billing), and the server enforces its own storage ceiling
 and a manual pause switch rather than relying on Cloudflare to catch it after
 the fact.
+
+The app itself (this repo's `public/` folder) redeploys automatically on every
+push, so it's always current. The group server does not — it only updates when
+someone re-runs **Deploy group server**. If a Friends feature stops working
+after an update, that's almost always why: run the deploy again.

@@ -84,6 +84,18 @@ function cleanName(value, fallback = 'Someone') {
   return name || fallback;
 }
 
+// Safe JSON.parse for the items list stored in shared_meals - a malformed
+// or missing value should just mean "no items", never a broken board.
+function parseItemsJson(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function num(value, max = 100000) {
   const n = Math.round(Number(value) || 0);
   if (!Number.isFinite(n)) return 0;
@@ -243,12 +255,12 @@ async function getBoard(request, env, member, origin) {
 
   const events = await env.DB.prepare(`
     SELECT e.id, e.member_id, e.kind, e.text, e.photo_key, e.calories, e.created_at, m.name AS member_name,
-           ms.name AS meal_name, ms.serving_desc AS meal_serving_desc, ms.qty AS meal_qty,
-           ms.calories AS meal_calories, ms.protein AS meal_protein, ms.carbs AS meal_carbs,
-           ms.fat AS meal_fat, ms.fiber AS meal_fiber, ms.sugar AS meal_sugar, ms.sodium AS meal_sodium
+           sm.meal_key AS shared_meal_key, sm.calories AS shared_calories, sm.protein AS shared_protein,
+           sm.carbs AS shared_carbs, sm.fat AS shared_fat, sm.fiber AS shared_fiber,
+           sm.sugar AS shared_sugar, sm.sodium AS shared_sodium, sm.items_json AS shared_items_json
     FROM events e
     JOIN members m ON m.id = e.member_id
-    LEFT JOIN meal_shares ms ON ms.event_id = e.id
+    LEFT JOIN shared_meals sm ON sm.event_id = e.id
     WHERE e.group_id = ?
     ORDER BY e.created_at DESC
     LIMIT ?
@@ -284,17 +296,16 @@ async function getBoard(request, env, member, origin) {
       photoKey: r.photo_key,
       calories: r.calories,
       createdAt: r.created_at,
-      meal: r.meal_name == null ? null : {
-        name: r.meal_name,
-        servingDesc: r.meal_serving_desc,
-        qty: r.meal_qty,
-        calories: r.meal_calories,
-        protein: r.meal_protein,
-        carbs: r.meal_carbs,
-        fat: r.meal_fat,
-        fiber: r.meal_fiber,
-        sugar: r.meal_sugar,
-        sodium: r.meal_sodium
+      sharedMeal: r.shared_meal_key == null ? null : {
+        mealKey: r.shared_meal_key,
+        calories: r.shared_calories,
+        protein: r.shared_protein,
+        carbs: r.shared_carbs,
+        fat: r.shared_fat,
+        fiber: r.shared_fiber,
+        sugar: r.shared_sugar,
+        sodium: r.shared_sodium,
+        items: parseItemsJson(r.shared_items_json)
       }
     }))
   }, 200, origin);
@@ -302,10 +313,10 @@ async function getBoard(request, env, member, origin) {
 
 // Cleans up the child rows of every event about to age out of the 90-day feed
 // window - the R2 photo and its size-accounting row for a photo event, the
-// meal_shares row for a shared-meal event. Without this, pruning the feed
+// shared_meals row for a shared-meal event. Without this, pruning the feed
 // only ever shrank the events table: the photo stayed in R2 forever (storage
 // growing without bound even though nothing looked wrong in the feed), and a
-// meal_shares row would sit there orphaned once its event was gone. Both are
+// shared_meals row would sit there orphaned once its event was gone. Both are
 // best-effort - a delete failing here shouldn't block posting the new event,
 // so each is caught rather than left to abort the batch.
 async function reapExpiringEvents(env, groupId, now) {
@@ -320,7 +331,7 @@ async function reapExpiringEvents(env, groupId, now) {
         if (env.PHOTOS) await env.PHOTOS.delete(row.photo_key);
         await env.DB.prepare('DELETE FROM photo_sizes WHERE photo_key = ?').bind(row.photo_key).run();
       }
-      await env.DB.prepare('DELETE FROM meal_shares WHERE event_id = ?').bind(row.id).run();
+      await env.DB.prepare('DELETE FROM shared_meals WHERE event_id = ?').bind(row.id).run();
     } catch {
       // Leaves that one row's child data untracked rather than risk the
       // request; the next post through this group retries it.
@@ -340,22 +351,54 @@ async function postEvent(request, env, member, origin) {
   const calories = body.calories == null ? null : num(body.calories);
   const eventId = crypto.randomUUID();
 
-  let meal = null;
+  let sharedMeal = null;
   if (kind === 'meal') {
-    const m = body.meal || {};
-    const name = String(m.name || '').trim().slice(0, 120);
-    if (!name) return fail('A shared meal needs a name', 400, origin);
-    meal = {
-      name,
-      servingDesc: String(m.servingDesc || '1 serving').slice(0, 60),
-      qty: Math.max(0, Math.min(1000, Number(m.qty) || 1)),
-      calories: num(m.calories),
-      protein: numDecimal(m.protein, 2000),
-      carbs: numDecimal(m.carbs, 2000),
-      fat: numDecimal(m.fat, 2000),
-      fiber: numDecimal(m.fiber, 500),
-      sugar: numDecimal(m.sugar, 2000),
-      sodium: num(m.sodium, 20000)
+    const mealKey = String(body.mealKey || '').trim();
+    if (!['breakfast', 'lunch', 'dinner', 'snacks'].includes(mealKey)) {
+      return fail('Unknown meal', 400, origin);
+    }
+    const rawItems = Array.isArray(body.items) ? body.items.slice(0, 40) : [];
+    const items = rawItems
+      .map(i => ({
+        name: String(i?.name || '').trim().slice(0, 120),
+        servingDesc: String(i?.servingDesc || '1 serving').slice(0, 60),
+        qty: Math.max(0, Math.min(1000, Number(i?.qty) || 1)),
+        calories: num(i?.calories),
+        protein: numDecimal(i?.protein, 2000),
+        carbs: numDecimal(i?.carbs, 2000),
+        fat: numDecimal(i?.fat, 2000),
+        fiber: numDecimal(i?.fiber, 500),
+        sugar: numDecimal(i?.sugar, 2000),
+        sodium: num(i?.sodium, 20000)
+      }))
+      .filter(i => i.name);
+    if (!items.length) return fail('That meal has nothing logged in it to share', 400, origin);
+
+    const itemsJson = JSON.stringify(items);
+    if (itemsJson.length > 20000) return fail('That meal has too many items to share', 400, origin);
+
+    // Summed here rather than trusted from the client, so the board's total
+    // always matches the items list it is shown next to.
+    const totals = items.reduce((acc, i) => ({
+      calories: acc.calories + i.calories * i.qty,
+      protein: acc.protein + i.protein * i.qty,
+      carbs: acc.carbs + i.carbs * i.qty,
+      fat: acc.fat + i.fat * i.qty,
+      fiber: acc.fiber + i.fiber * i.qty,
+      sugar: acc.sugar + i.sugar * i.qty,
+      sodium: acc.sodium + i.sodium * i.qty
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 });
+
+    sharedMeal = {
+      mealKey,
+      itemsJson,
+      calories: Math.round(totals.calories),
+      protein: numDecimal(totals.protein, 20000),
+      carbs: numDecimal(totals.carbs, 20000),
+      fat: numDecimal(totals.fat, 20000),
+      fiber: numDecimal(totals.fiber, 20000),
+      sugar: numDecimal(totals.sugar, 20000),
+      sodium: Math.round(totals.sodium)
     };
   }
 
@@ -368,12 +411,13 @@ async function postEvent(request, env, member, origin) {
     env.DB.prepare('DELETE FROM events WHERE group_id = ? AND created_at < ?')
       .bind(member.group_id, now - EVENT_RETENTION_DAYS * 86400000)
   ];
-  if (meal) {
+  if (sharedMeal) {
     writes.push(
       env.DB.prepare(`
-        INSERT INTO meal_shares (event_id, name, serving_desc, qty, calories, protein, carbs, fat, fiber, sugar, sodium)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(eventId, meal.name, meal.servingDesc, meal.qty, meal.calories, meal.protein, meal.carbs, meal.fat, meal.fiber, meal.sugar, meal.sodium)
+        INSERT INTO shared_meals (event_id, meal_key, calories, protein, carbs, fat, fiber, sugar, sodium, items_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(eventId, sharedMeal.mealKey, sharedMeal.calories, sharedMeal.protein, sharedMeal.carbs,
+              sharedMeal.fat, sharedMeal.fiber, sharedMeal.sugar, sharedMeal.sodium, sharedMeal.itemsJson)
     );
   }
   await env.DB.batch(writes);
