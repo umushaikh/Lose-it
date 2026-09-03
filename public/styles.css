@@ -537,7 +537,13 @@ body {
   overflow-y: auto;
   border-radius: 28px 28px 0 0;
   border-top: 1px solid var(--border);
-  padding: 18px 18px calc(26px + env(safe-area-inset-bottom, 0px));
+  /* A short sheet never gets near the top of the screen, so this is a no-op
+     for most modals - but content long enough to hit max-height (an item
+     with every nutrition field, a long ingredient list) pushes the sheet's
+     own top edge all the way to the screen's top edge, and without this a
+     phone's status bar / notch would sit on top of the close button rather
+     than above it. */
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 18px calc(26px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Freezes the page behind an open sheet. */
@@ -566,13 +572,7 @@ body.modal-open { overflow: hidden; }
   border-radius: 0;
   padding-top: calc(14px + env(safe-area-inset-top, 0px));
 }
-.modal-page .modal-head {
-  position: sticky;
-  top: 0;
-  background: var(--card);
-  z-index: 1;
-  padding-bottom: 10px;
-}
+.modal-page .modal-head { padding-bottom: 10px; }
 
 #add-entry-pane-search, #recipe-editor-modal form {
   display: flex;
@@ -584,7 +584,20 @@ body.modal-open { overflow: hidden; }
 #add-entry-status { flex-shrink: 0; }
 #search-online-btn { flex-shrink: 0; padding: 11px 14px; font-size: 13px; margin-top: 8px; }
 
-.modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+/* Pinned rather than scrolling away with the rest of a long form - a sheet
+   tall enough to need scrolling (see .modal-sheet above) would otherwise
+   carry its own close button off-screen with the content, making it
+   genuinely unreachable rather than just out of view. */
+.modal-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
 .modal-head h3 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
 .modal-hint { font-size: 13px; color: var(--text-dim); margin: 0 0 14px; line-height: 1.5; }
 .modal-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
