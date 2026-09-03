@@ -29,23 +29,23 @@ bio you can set. Nothing leaves your phone unless you join a group.
   lookups pull the real figures from Open Food Facts; the built-in database
   and restaurant meals use close estimates the same way their calories and
   macros always have.
-- **Food search** — a built-in database of 745 foods with an icon on each,
-  including 377 named restaurant meals across 79 chains and cuisines:
-  common whole foods and staples, Emirati and Gulf cooking (machboos, harees,
-  thereed, luqaimat, karak, camel meat), Levantine and Arabic dishes
-  (shawarma, manakish, fattoush, knafeh), South, East and Southeast Asian,
-  Mexican, and chains found in the UAE, plus a genuinely complete core
-  McDonald's menu (burgers, chicken, breakfast, sides, McCafé, desserts) and
-  a full rundown of Wendy's, Taco Bell and Chick-fil-A. Also 20 built-in
-  low-calorie, high-protein recipes (grilled chicken & broccoli bowl, turkey
-  chili, baked salmon & asparagus, and the like) for whenever you want
-  something that isn't a restaurant meal or a raw ingredient. Values come
-  from USDA FoodData Central plus published chain figures. There's also a
-  "Search branded foods" lookup against
+- **Food search** — a built-in database of 720 foods with an icon on each,
+  including 352 named restaurant meals across 77 chains and cuisines, all
+  of them actually operating in the UAE: common whole foods and staples,
+  Emirati and Gulf cooking (machboos, harees, thereed, luqaimat, karak, camel
+  meat), Levantine and Arabic dishes (shawarma, manakish, fattoush, knafeh),
+  South, East and Southeast Asian, Mexican, and the fast-food chains found
+  here, including a genuinely complete core McDonald's menu (burgers,
+  chicken, breakfast, sides, McCafé, desserts) and a full rundown of
+  Wendy's. Also 20 built-in low-calorie, high-protein recipes (grilled
+  chicken & broccoli bowl, turkey chili, baked salmon & asparagus, and the
+  like) for whenever you want something that isn't a restaurant meal or a
+  raw ingredient. Values come from USDA FoodData Central plus published
+  chain figures. There's also a "Search branded foods" lookup against
   [Open Food Facts](https://world.openfoodfacts.org) for packaged products.
   Anything you log from either is saved to My Foods so it's one tap away
   next time.
-- **Eating out today** — from the Today tab, browse all 377 restaurant meals
+- **Eating out today** — from the Today tab, browse all 352 restaurant meals
   against the calories you have left. Everything is listed: what fits comes
   first (highest protein per calorie), and anything over budget follows in
   red, marked with how far over it is, still loggable if you want it. Filter

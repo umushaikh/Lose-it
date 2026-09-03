@@ -580,34 +580,12 @@ const RESTAURANT_DB = [
   { name: 'Chicken Nuggets, 10 pcs', brand: 'Wendy’s', servingDesc: '10 pieces', calories: 420, protein: 21, carbs: 25, fat: 27, fiber: 1.0, sugar: 1.0, sodium: 900 },
   { name: 'Bacon, Egg & Swiss Croissant', brand: 'Wendy’s', servingDesc: '1 sandwich', calories: 570, protein: 25, carbs: 34, fat: 37, fiber: 1.0, sugar: 5.0, sodium: 1170 },
 
-  // Taco Bell
-  { name: 'Crunchy Taco', brand: 'Taco Bell', servingDesc: '1 taco', calories: 170, protein: 8, carbs: 13, fat: 9, fiber: 3.0, sugar: 1.0, sodium: 310 },
-  { name: 'Soft Taco', brand: 'Taco Bell', servingDesc: '1 taco', calories: 180, protein: 9, carbs: 16, fat: 9, fiber: 1.5, sugar: 1.0, sodium: 490 },
-  { name: 'Crunchy Taco Supreme', brand: 'Taco Bell', servingDesc: '1 taco', calories: 190, protein: 8, carbs: 15, fat: 10, fiber: 3.0, sugar: 2.0, sodium: 330 },
-  { name: 'Doritos Locos Taco', brand: 'Taco Bell', servingDesc: '1 taco', calories: 180, protein: 8, carbs: 14, fat: 10, fiber: 1.5, sugar: 1.0, sodium: 350 },
-  { name: 'Burrito Supreme, Beef', brand: 'Taco Bell', servingDesc: '1 burrito', calories: 400, protein: 17, carbs: 50, fat: 17, fiber: 8.0, sugar: 4.0, sodium: 1180 },
-  { name: 'Bean Burrito', brand: 'Taco Bell', servingDesc: '1 burrito', calories: 350, protein: 13, carbs: 54, fat: 9, fiber: 8.0, sugar: 3.0, sodium: 1080 },
-  { name: 'Crunchwrap Supreme', brand: 'Taco Bell', servingDesc: '1 wrap', calories: 530, protein: 16, carbs: 70, fat: 21, fiber: 6.0, sugar: 5.0, sodium: 1100 },
-  { name: 'Chalupa Supreme, Chicken', brand: 'Taco Bell', servingDesc: '1 chalupa', calories: 350, protein: 16, carbs: 28, fat: 20, fiber: 2.0, sugar: 3.0, sodium: 580 },
-  { name: 'Cheesy Gordita Crunch', brand: 'Taco Bell', servingDesc: '1 gordita', calories: 500, protein: 21, carbs: 40, fat: 29, fiber: 3.0, sugar: 4.0, sodium: 1090 },
-  { name: 'Nachos BellGrande', brand: 'Taco Bell', servingDesc: '1 serving', calories: 720, protein: 16, carbs: 79, fat: 34, fiber: 11.0, sugar: 5.0, sodium: 1200 },
-  { name: 'Mexican Pizza', brand: 'Taco Bell', servingDesc: '1 pizza', calories: 540, protein: 19, carbs: 47, fat: 30, fiber: 6.0, sugar: 4.0, sodium: 1050 },
-  { name: 'Quesadilla, Chicken', brand: 'Taco Bell', servingDesc: '1 quesadilla', calories: 520, protein: 26, carbs: 38, fat: 30, fiber: 2.0, sugar: 3.0, sodium: 1240 },
-  { name: 'Black Beans & Rice', brand: 'Taco Bell', servingDesc: '1 serving', calories: 170, protein: 5, carbs: 32, fat: 2, fiber: 6.0, sugar: 1.0, sodium: 560 },
-  { name: 'Cinnamon Twists', brand: 'Taco Bell', servingDesc: '1 serving', calories: 170, protein: 1, carbs: 27, fat: 6, fiber: 0.5, sugar: 13.0, sodium: 200 },
-
-  // Chick-fil-A
-  { name: 'Chicken Sandwich', brand: 'Chick-fil-A', servingDesc: '1 sandwich', calories: 420, protein: 29, carbs: 41, fat: 16, fiber: 1.0, sugar: 6.0, sodium: 1460 },
-  { name: 'Spicy Chicken Sandwich', brand: 'Chick-fil-A', servingDesc: '1 sandwich', calories: 450, protein: 28, carbs: 42, fat: 19, fiber: 2.0, sugar: 6.0, sodium: 1600 },
-  { name: 'Deluxe Chicken Sandwich', brand: 'Chick-fil-A', servingDesc: '1 sandwich', calories: 500, protein: 30, carbs: 43, fat: 23, fiber: 2.0, sugar: 8.0, sodium: 1560 },
-  { name: 'Grilled Chicken Sandwich', brand: 'Chick-fil-A', servingDesc: '1 sandwich', calories: 320, protein: 28, carbs: 29, fat: 6, fiber: 2.0, sugar: 7.0, sodium: 700 },
-  { name: 'Chicken Nuggets, 8 count', brand: 'Chick-fil-A', servingDesc: '8 pieces', calories: 250, protein: 27, carbs: 11, fat: 12, fiber: 0.5, sugar: 1.0, sodium: 1000 },
-  { name: 'Grilled Nuggets, 12 count', brand: 'Chick-fil-A', servingDesc: '12 pieces', calories: 200, protein: 38, carbs: 2, fat: 4.5, fiber: 0.0, sugar: 2.0, sodium: 530 },
-  { name: 'Waffle Potato Fries, medium', brand: 'Chick-fil-A', servingDesc: '1 medium', calories: 420, protein: 5, carbs: 45, fat: 23, fiber: 4.0, sugar: 0.0, sodium: 240 },
-  { name: 'Cobb Salad with Grilled Chicken', brand: 'Chick-fil-A', servingDesc: '1 salad', calories: 500, protein: 40, carbs: 24, fat: 29, fiber: 5.0, sugar: 8.0, sodium: 1400 },
-  { name: 'Market Salad with Grilled Chicken', brand: 'Chick-fil-A', servingDesc: '1 salad', calories: 460, protein: 32, carbs: 38, fat: 21, fiber: 6.0, sugar: 25.0, sodium: 960 },
-  { name: 'Chick-n-Strips, 4 count', brand: 'Chick-fil-A', servingDesc: '4 pieces', calories: 350, protein: 38, carbs: 16, fat: 15, fiber: 1.0, sugar: 1.0, sodium: 1290 },
-  { name: 'Mac & Cheese, medium', brand: 'Chick-fil-A', servingDesc: '1 medium', calories: 450, protein: 19, carbs: 40, fat: 25, fiber: 1.0, sugar: 5.0, sodium: 1170 },
+  // Taco Bell and Chick-fil-A were both added in an earlier pass and then
+  // removed: Taco Bell exited the UAE in 2012 and, as of when this was
+  // checked, has only announced a comeback (via Americana Restaurants) with
+  // no open locations yet; Chick-fil-A has no UAE presence at all and the
+  // Middle East isn't in its current expansion plans. Re-add them (Taco
+  // Bell in particular) once they're actually operating here.
 
   // KFC
   { name: 'Mighty Zinger', brand: 'KFC', servingDesc: '1 burger', calories: 700, protein: 40, carbs: 54, fat: 35, fiber: 1.6, sugar: 1.1, sodium: 525 },
