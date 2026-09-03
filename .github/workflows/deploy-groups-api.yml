@@ -31,9 +31,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # wrangler 4.x refuses to run on anything older than Node 22 - it
+      # prints a warning and exits 1 rather than actually failing loudly, so
+      # this silently breaks every step after it if left too low.
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       # Fail with something readable rather than a wrangler stack trace, since
       # a missing secret is by far the likeliest way this goes wrong.
