@@ -22,11 +22,12 @@ bio you can set. Nothing leaves your phone unless you join a group.
   Includes protein/carb/fat targets from an adjustable macro split.
 - **Food diary** — log meals (breakfast/lunch/dinner/snacks) for any day,
   see calories and macros remaining against your budget, and log exercise
-  to add calories back. Tap the protein/carbs/fat bars for the day's full
+  to add calories back. Each meal is one "+ Add Food" button plus a ⋯ menu
+  for everything else. Tap the protein/carbs/fat bars for the day's full
   picture: a donut chart of today's calorie split plus fiber, sugar and
-  sodium, each against a general daily guideline. Tap "Summary" on any
-  meal for the same breakdown scoped to just that meal, with the items
-  in it listed underneath.
+  sodium, each against a general daily guideline. "View summary" in a
+  meal's ⋯ menu gives the same breakdown scoped to just that meal, with
+  the items in it listed underneath.
 - **Fuller nutrition** — protein, carbs and fat, plus fiber, sugar and
   sodium, on every food you log, save, or build into a recipe. Branded
   lookups pull the real figures from Open Food Facts; the built-in database
@@ -44,9 +45,10 @@ bio you can set. Nothing leaves your phone unless you join a group.
   chicken & broccoli bowl, turkey chili, baked salmon & asparagus, and the
   like) for whenever you want something that isn't a restaurant meal or a
   raw ingredient. Values come from USDA FoodData Central plus published
-  chain figures. There's also a "Search branded foods" lookup against
-  [Open Food Facts](https://world.openfoodfacts.org) for packaged products.
-  Anything you log from either is saved to My Foods so it's one tap away
+  chain figures. Typing three or more characters also searches
+  [Open Food Facts](https://world.openfoodfacts.org) for branded/packaged
+  products automatically, merged into the same list — no separate search
+  to run. Anything you log is saved to My Foods so it's one tap away
   next time.
 - **Eating out today** — from the Today tab, browse all 352 restaurant meals
   against the calories you have left. Everything is listed: what fits comes
@@ -91,14 +93,14 @@ bio you can set. Nothing leaves your phone unless you join a group.
     foods behind those totals, live, to everyone in the group, for whatever
     date the Friends tab is showing (today by default, same as the rest of
     the board).
-  - **Share a meal, or just one item** — the share icon (↗) next to a meal's
-    + button posts that whole breakfast/lunch/dinner/snacks to the group
-    *feed* (as opposed to a profile, which is looked up): every item in it,
-    with full nutrition, plus the total. The same icon next to a single
-    logged item shares just that one instead. Either way, anyone in the
-    group can tap the post to add it to their own diary in one go. Useful
-    for calling attention to something specific in the feed's timeline;
-    profiles already show all of it either way.
+  - **Share a meal, or just one item** — the ⋯ menu next to a meal's total
+    has a "Share with friends" option that posts that whole breakfast/lunch/
+    dinner/snacks to the group *feed* (as opposed to a profile, which is
+    looked up): every item in it, with full nutrition, plus the total. The
+    share icon (↗) next to a single logged item shares just that one instead.
+    Either way, anyone in the group can tap the post to add it to their own
+    diary in one go. Useful for calling attention to something specific in
+    the feed's timeline; profiles already show all of it either way.
 - **Backup & restore** — export/import your data as a JSON file. API keys and
   group credentials are deliberately left out of the file.
 - **Dark by default** — an OLED-black theme with rounded cards, an open-bottom

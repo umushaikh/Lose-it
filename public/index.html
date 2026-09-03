@@ -72,44 +72,48 @@
         <div id="meal-breakfast" class="meal-section">
           <div class="meal-head">
             <div><h3>Breakfast</h3><div id="meal-breakfast-suggested" class="meal-suggested"></div></div>
-            <div class="meal-head-right"><span id="meal-breakfast-total" class="meal-total">0 cal</span>
-              <button type="button" id="meal-breakfast-share-btn" class="icon-btn small meal-share-btn hidden" data-meal="breakfast" title="Share this meal to the group">↗</button>
-              <button class="icon-btn add-meal-btn" data-meal="breakfast" title="Add food">+</button></div>
+            <div class="meal-head-right">
+              <span id="meal-breakfast-total" class="meal-total">0 cal</span>
+              <button type="button" class="icon-btn small meal-menu-btn" data-meal="breakfast" title="More options">⋯</button>
+            </div>
           </div>
-          <button type="button" id="meal-breakfast-summary-btn" class="meal-summary-toggle hidden" data-meal="breakfast">Summary <span class="chev-mini">&#8250;</span></button>
+          <div class="meal-add-row"><button type="button" class="secondary-btn small add-meal-btn" data-meal="breakfast">+ Add Food</button></div>
           <div id="meal-breakfast-list" class="list"></div>
         </div>
 
         <div id="meal-lunch" class="meal-section">
           <div class="meal-head">
             <div><h3>Lunch</h3><div id="meal-lunch-suggested" class="meal-suggested"></div></div>
-            <div class="meal-head-right"><span id="meal-lunch-total" class="meal-total">0 cal</span>
-              <button type="button" id="meal-lunch-share-btn" class="icon-btn small meal-share-btn hidden" data-meal="lunch" title="Share this meal to the group">↗</button>
-              <button class="icon-btn add-meal-btn" data-meal="lunch" title="Add food">+</button></div>
+            <div class="meal-head-right">
+              <span id="meal-lunch-total" class="meal-total">0 cal</span>
+              <button type="button" class="icon-btn small meal-menu-btn" data-meal="lunch" title="More options">⋯</button>
+            </div>
           </div>
-          <button type="button" id="meal-lunch-summary-btn" class="meal-summary-toggle hidden" data-meal="lunch">Summary <span class="chev-mini">&#8250;</span></button>
+          <div class="meal-add-row"><button type="button" class="secondary-btn small add-meal-btn" data-meal="lunch">+ Add Food</button></div>
           <div id="meal-lunch-list" class="list"></div>
         </div>
 
         <div id="meal-dinner" class="meal-section">
           <div class="meal-head">
             <div><h3>Dinner</h3><div id="meal-dinner-suggested" class="meal-suggested"></div></div>
-            <div class="meal-head-right"><span id="meal-dinner-total" class="meal-total">0 cal</span>
-              <button type="button" id="meal-dinner-share-btn" class="icon-btn small meal-share-btn hidden" data-meal="dinner" title="Share this meal to the group">↗</button>
-              <button class="icon-btn add-meal-btn" data-meal="dinner" title="Add food">+</button></div>
+            <div class="meal-head-right">
+              <span id="meal-dinner-total" class="meal-total">0 cal</span>
+              <button type="button" class="icon-btn small meal-menu-btn" data-meal="dinner" title="More options">⋯</button>
+            </div>
           </div>
-          <button type="button" id="meal-dinner-summary-btn" class="meal-summary-toggle hidden" data-meal="dinner">Summary <span class="chev-mini">&#8250;</span></button>
+          <div class="meal-add-row"><button type="button" class="secondary-btn small add-meal-btn" data-meal="dinner">+ Add Food</button></div>
           <div id="meal-dinner-list" class="list"></div>
         </div>
 
         <div id="meal-snacks" class="meal-section">
           <div class="meal-head">
             <div><h3>Snacks</h3><div id="meal-snacks-suggested" class="meal-suggested"></div></div>
-            <div class="meal-head-right"><span id="meal-snacks-total" class="meal-total">0 cal</span>
-              <button type="button" id="meal-snacks-share-btn" class="icon-btn small meal-share-btn hidden" data-meal="snacks" title="Share this meal to the group">↗</button>
-              <button class="icon-btn add-meal-btn" data-meal="snacks" title="Add food">+</button></div>
+            <div class="meal-head-right">
+              <span id="meal-snacks-total" class="meal-total">0 cal</span>
+              <button type="button" class="icon-btn small meal-menu-btn" data-meal="snacks" title="More options">⋯</button>
+            </div>
           </div>
-          <button type="button" id="meal-snacks-summary-btn" class="meal-summary-toggle hidden" data-meal="snacks">Summary <span class="chev-mini">&#8250;</span></button>
+          <div class="meal-add-row"><button type="button" class="secondary-btn small add-meal-btn" data-meal="snacks">+ Add Food</button></div>
           <div id="meal-snacks-list" class="list"></div>
         </div>
 
@@ -370,14 +374,13 @@
       <button id="add-entry-tab-quick" class="modal-tab">Quick Add</button>
     </div>
     <div id="add-entry-pane-search">
-      <input id="add-entry-search" class="text-input" type="search" placeholder="Search foods (e.g. chicken breast)..." />
-      <div class="quick-actions">
-        <button type="button" id="scan-btn" class="secondary-btn">📷 Scan barcode</button>
-        <button type="button" id="photo-btn" class="secondary-btn">🍽️ Photo estimate</button>
+      <div class="search-row">
+        <input id="add-entry-search" class="text-input" type="search" placeholder="Search foods (e.g. chicken breast)..." />
+        <button type="button" id="scan-btn" class="icon-btn" title="Scan barcode">📷</button>
+        <button type="button" id="photo-btn" class="icon-btn" title="Photo estimate">🍽️</button>
       </div>
       <div id="add-entry-status" class="search-status hidden"></div>
       <div id="add-entry-food-list" class="list scroll-list"></div>
-      <button id="search-online-btn" class="secondary-btn full">Search branded foods</button>
     </div>
     <div id="add-entry-pane-quick" class="hidden">
       <form id="quick-add-form">
@@ -486,6 +489,23 @@
     <div id="meal-detail-extra"></div>
     <h4 id="meal-detail-heading" class="meal-detail-heading"></h4>
     <div id="meal-detail-items" class="list"></div>
+  </div>
+</div>
+
+<!-- Per-meal "more options" menu, opened by the ⋯ next to a meal's total -->
+<div id="meal-menu-modal" class="modal hidden" data-close-modal="meal-menu-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="meal-menu-title">Meal</h3>
+      <button class="icon-btn" data-close-modal="meal-menu-modal">✕</button>
+    </div>
+    <button type="button" id="meal-menu-summary-btn" class="menu-row hidden">
+      <span class="menu-row-icon">📊</span> View summary
+    </button>
+    <button type="button" id="meal-menu-share-btn" class="menu-row hidden">
+      <span class="menu-row-icon">↗</span> Share with friends
+    </button>
+    <div id="meal-menu-empty" class="empty-hint hidden">Nothing logged in this meal yet.</div>
   </div>
 </div>
 

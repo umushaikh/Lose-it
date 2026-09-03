@@ -374,15 +374,10 @@ function renderToday() {
     document.getElementById(`meal-${m.key}-suggested`).textContent =
       suggested > 0 ? `${suggested.toLocaleString()} calories suggested` : '';
 
-    // Tapping "Summary" opens the full per-meal breakdown (a donut chart plus
-    // fiber/sugar/sodium, same treatment as the day's own macro bars) rather
-    // than expanding anything in place, so there's nothing to track between
-    // renders here beyond whether the button shows at all.
-    document.getElementById(`meal-${m.key}-summary-btn`).classList.toggle('hidden', items.length === 0);
-
-    // Sharing needs a group to share to and something worth sharing.
-    const shareBtn = document.getElementById(`meal-${m.key}-share-btn`);
-    shareBtn.classList.toggle('hidden', items.length === 0 || !(friends.group && friends.group.groupId));
+    // Viewing the summary and sharing to the group both live behind the ⋯
+    // menu now, which is always visible - what it offers when opened depends
+    // on whether the meal has anything in it and whether there's a group to
+    // share to, worked out at open time in openMealMenu() rather than here.
     const inGroup = Boolean(friends.group && friends.group.groupId);
     list.innerHTML = items.length
       ? items.map(i => {
@@ -577,6 +572,27 @@ function renderMealDetail(mealKey) {
         <div class="meal-detail-item-cal">${t.calories.toLocaleString()}</div>
       </div>`;
   }).join('');
+}
+
+// The ⋯ next to a meal opens this rather than showing Summary/Share as
+// separate buttons cluttering the meal card itself - what's offered depends
+// on whether there's anything logged and whether there's a group to share
+// to, worked out fresh each time it opens.
+function openMealMenu(mealKey) {
+  const meal = MEALS.find(m => m.key === mealKey);
+  const items = state.diaryDay[mealKey] || [];
+  const inGroup = Boolean(friends.group && friends.group.groupId);
+
+  document.getElementById('meal-menu-title').textContent = meal.label;
+  const summaryBtn = document.getElementById('meal-menu-summary-btn');
+  const shareBtn = document.getElementById('meal-menu-share-btn');
+  summaryBtn.classList.toggle('hidden', items.length === 0);
+  summaryBtn.dataset.meal = mealKey;
+  shareBtn.classList.toggle('hidden', items.length === 0 || !inGroup);
+  shareBtn.dataset.meal = mealKey;
+  document.getElementById('meal-menu-empty').classList.toggle('hidden', items.length > 0);
+
+  openModal('meal-menu-modal');
 }
 
 // Lists your saved foods and the whole built-in database together, so the
@@ -980,6 +996,8 @@ function openAddEntryModal(meal) {
   document.getElementById('quick-add-form').reset();
   document.getElementById('add-entry-tab-search').click();
   state.searchResults = [];
+  clearTimeout(onlineSearchTimer);
+  document.getElementById('add-entry-status').classList.add('hidden');
   renderAddEntryFoodList('');
   openModal('add-entry-modal');
   document.getElementById('add-entry-search').focus();
@@ -1005,14 +1023,13 @@ function renderAddEntryFoodList(query) {
   const results = [...localMatches(query), ...state.searchResults];
   const container = document.getElementById('add-entry-food-list');
   if (!results.length) {
-    container.innerHTML = `<div class="empty-hint">No matches. Try “Search branded foods” below, or Quick Add.</div>`;
+    container.innerHTML = `<div class="empty-hint">No matches. Try a different search, or Quick Add.</div>`;
     return;
   }
   // Tapping the food opens the editor (serving, grams, macros); the Add button
   // stays for logging one serving without a detour. The chevron is there so the
   // row reads as tappable rather than looking like plain text.
-  container.innerHTML = `<div class="list-hint">Tap a food to set grams or servings · or Add one serving</div>`
-    + results.map((f, i) => `
+  container.innerHTML = results.map((f, i) => `
     <div class="food-row pick-row" data-idx="${i}">
       <button type="button" class="entry-info entry-open pick-open" data-idx="${i}">
         <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(mealLabel(f))} <span class="chev">›</span></div>
@@ -1653,6 +1670,8 @@ function openLogFoodModal(food, startQty = 1) {
 
 // ---- Event wiring ----
 
+let onlineSearchTimer = null;
+
 // ---- Friends: shared board ----
 
 let daySyncTimer = null;
@@ -2245,20 +2264,9 @@ function wireEvents() {
       if (entry) openEntryEditor(meal, entry);
       return;
     }
-    const summaryBtn = e.target.closest('.meal-summary-toggle');
-    if (summaryBtn) {
-      renderMealDetail(summaryBtn.dataset.meal);
-      openModal('meal-detail-modal');
-      return;
-    }
-    const mealShareBtn = e.target.closest('.meal-share-btn');
-    if (mealShareBtn) {
-      const key = mealShareBtn.dataset.meal;
-      const count = state.diaryDay[key].length;
-      const label = MEALS.find(m => m.key === key)?.label || key;
-      if (confirm(`Share your ${label} (${count} item${count === 1 ? '' : 's'}) with the group?`)) {
-        await shareMealToGroup(key);
-      }
+    const menuBtn = e.target.closest('.meal-menu-btn');
+    if (menuBtn) {
+      openMealMenu(menuBtn.dataset.meal);
       return;
     }
     const itemShareBtn = e.target.closest('.share-entry-btn');
@@ -2290,6 +2298,22 @@ function wireEvents() {
     openModal('macro-detail-modal');
   });
 
+  document.getElementById('meal-menu-summary-btn').addEventListener('click', () => {
+    const key = document.getElementById('meal-menu-summary-btn').dataset.meal;
+    closeModal('meal-menu-modal');
+    renderMealDetail(key);
+    openModal('meal-detail-modal');
+  });
+  document.getElementById('meal-menu-share-btn').addEventListener('click', async () => {
+    const key = document.getElementById('meal-menu-share-btn').dataset.meal;
+    const count = state.diaryDay[key].length;
+    const label = MEALS.find(m => m.key === key)?.label || key;
+    closeModal('meal-menu-modal');
+    if (confirm(`Share your ${label} (${count} item${count === 1 ? '' : 's'}) with the group?`)) {
+      await shareMealToGroup(key);
+    }
+  });
+
   document.getElementById('add-exercise-btn').addEventListener('click', () => {
     document.getElementById('exercise-form').reset();
     openModal('add-exercise-modal');
@@ -2316,11 +2340,42 @@ function wireEvents() {
     document.getElementById('add-entry-pane-quick').classList.remove('hidden');
     document.getElementById('add-entry-pane-search').classList.add('hidden');
   });
+  // Local results (built-in database + My Foods) render instantly on every
+  // keystroke; branded results come from a network call, so they're debounced
+  // and merged in once they land rather than needing a separate search tap.
   document.getElementById('add-entry-search').addEventListener('input', e => {
-    // Online hits belong to the query that fetched them.
+    const query = e.target.value;
+    const q = query.trim();
     state.searchResults = [];
-    document.getElementById('add-entry-modal').classList.toggle('has-query', !!e.target.value.trim());
-    renderAddEntryFoodList(e.target.value);
+    document.getElementById('add-entry-modal').classList.toggle('has-query', !!q);
+    renderAddEntryFoodList(query);
+
+    clearTimeout(onlineSearchTimer);
+    const status = document.getElementById('add-entry-status');
+    if (q.length < 3) {
+      status.classList.add('hidden');
+      return;
+    }
+    status.textContent = 'Searching branded foods…';
+    status.classList.remove('hidden');
+    onlineSearchTimer = setTimeout(async () => {
+      let text = '';
+      try {
+        const results = await searchOnlineFoods(q);
+        // A slower, earlier search landing after a faster, later one would
+        // otherwise overwrite results for the query actually on screen.
+        if (document.getElementById('add-entry-search').value.trim() !== q) return;
+        state.searchResults = results;
+        text = results.length ? `${results.length} branded ${results.length === 1 ? 'result' : 'results'}.` : '';
+      } catch {
+        if (document.getElementById('add-entry-search').value.trim() !== q) return;
+        state.searchResults = [];
+        text = navigator.onLine ? 'Could not search online.' : '';
+      }
+      status.textContent = text;
+      status.classList.toggle('hidden', !text);
+      renderAddEntryFoodList(q);
+    }, 500);
   });
 
   // While a search box has focus the sheet goes full height and sheds the
@@ -2331,27 +2386,6 @@ function wireEvents() {
       const modal = document.getElementById(modalId);
       input.addEventListener('focus', () => modal.classList.add('searching'));
     });
-  document.getElementById('search-online-btn').addEventListener('click', async () => {
-    const query = document.getElementById('add-entry-search').value.trim();
-    const status = document.getElementById('add-entry-status');
-    if (!query) {
-      status.textContent = 'Type something to search for first.';
-      status.classList.remove('hidden');
-      return;
-    }
-    status.textContent = 'Searching branded foods…';
-    status.classList.remove('hidden');
-    try {
-      state.searchResults = await searchOnlineFoods(query);
-      status.textContent = state.searchResults.length
-        ? `Found ${state.searchResults.length} branded ${state.searchResults.length === 1 ? 'result' : 'results'}.`
-        : 'No branded results for that search.';
-    } catch {
-      state.searchResults = [];
-      status.textContent = 'Could not search online — check your connection.';
-    }
-    renderAddEntryFoodList(query);
-  });
   document.getElementById('add-entry-food-list').addEventListener('click', async e => {
     const openBtn = e.target.closest('.pick-open');
     if (openBtn) {
