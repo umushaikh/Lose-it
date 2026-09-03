@@ -1,3 +1,8 @@
+// Replaced with the commit sha at deploy time, the same way the service worker
+// is stamped. Shown in the backup sheet so the running version can be checked
+// against what was last deployed.
+const BUILD_ID = '__BUILD_ID__';
+
 const MEALS = [
   { key: 'breakfast', label: 'Breakfast' },
   { key: 'lunch', label: 'Lunch' },
@@ -716,11 +721,13 @@ function renderAddEntryFoodList(query) {
     return;
   }
   // Tapping the food opens the editor (serving, grams, macros); the Add button
-  // stays for logging one serving without a detour.
-  container.innerHTML = results.map((f, i) => `
+  // stays for logging one serving without a detour. The chevron is there so the
+  // row reads as tappable rather than looking like plain text.
+  container.innerHTML = `<div class="list-hint">Tap a food to set grams or servings · or Add one serving</div>`
+    + results.map((f, i) => `
     <div class="food-row pick-row" data-idx="${i}">
       <button type="button" class="entry-info entry-open pick-open" data-idx="${i}">
-        <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(f.name)}</div>
+        <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(f.name)} <span class="chev">›</span></div>
         <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}
           <span class="source-tag">${SOURCE_LABEL[f.source] || ''}</span></div>
       </button>
@@ -1745,7 +1752,13 @@ function wireEvents() {
   });
 
   // Backup / restore
-  document.getElementById('data-btn').addEventListener('click', () => openModal('data-modal'));
+  document.getElementById('data-btn').addEventListener('click', () => {
+    const stamped = BUILD_ID !== '__BUILD' + '_ID__';
+    document.getElementById('build-stamp').textContent = stamped
+      ? `Version ${BUILD_ID.slice(0, 7)}`
+      : 'Version: running locally';
+    openModal('data-modal');
+  });
   document.getElementById('export-btn').addEventListener('click', async () => {
     const data = await db.exportData();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });

@@ -37,12 +37,16 @@ jobs:
       # Gives every deploy a distinct service worker and cache name, so
       # browsers actually pick up new versions instead of serving the old
       # cached app indefinitely.
-      - name: Stamp the service worker with this commit
+      - name: Stamp the service worker and app with this commit
         run: |
           sed -i "s/__BUILD_ID__/${GITHUB_SHA}/" public/sw.js
+          sed -i "0,/__BUILD_ID__/s//${GITHUB_SHA}/" public/app.js
           grep -q "calorie-counter-\${BUILD_ID}" public/sw.js && grep -q "${GITHUB_SHA}" public/sw.js \
-            && echo "stamped BUILD_ID=${GITHUB_SHA}" \
+            && echo "stamped sw BUILD_ID=${GITHUB_SHA}" \
             || { echo "service worker was not stamped"; exit 1; }
+          grep -q "const BUILD_ID = '${GITHUB_SHA}'" public/app.js \
+            && echo "stamped app BUILD_ID=${GITHUB_SHA}" \
+            || { echo "app.js was not stamped"; exit 1; }
 
       - uses: actions/upload-pages-artifact@v3
         with:

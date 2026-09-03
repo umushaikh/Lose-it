@@ -389,7 +389,13 @@ body.modal-open { overflow: hidden; }
 /* A search sheet claims all the room above the keyboard, and only its results
    scroll - so what you typed stays put at the top instead of being squeezed
    into a sliver at the bottom. */
-.modal.searching .modal-sheet { height: 100%; padding-top: 10px; }
+/* Grows up to the space above the keyboard, but only as far as its content
+   needs - a single result should not stretch into a full screen of white. The
+   inset keeps the title clear of the status bar when it does fill the screen. */
+.modal.searching .modal-sheet {
+  max-height: 100%;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+}
 .modal.searching .quick-actions { display: none; }
 .modal.searching .modal-head { margin-bottom: 4px; }
 
@@ -413,6 +419,14 @@ body.modal-open { overflow: hidden; }
   margin-bottom: 6px;
 }
 .left-after { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+
+.list-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 2px 0 6px;
+}
+.chev { color: var(--accent); font-weight: 700; }
+.build-stamp { font-size: 11px; color: var(--text-dim); text-align: center; margin-top: 12px; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .modal-head h3 { margin: 0; font-size: 17px; }
 .modal-hint { font-size: 13px; color: var(--text-dim); margin: 0 0 12px; }
