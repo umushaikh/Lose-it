@@ -114,9 +114,40 @@ jobs:
       - name: Create the tables
         run: npx wrangler d1 execute "$DB_NAME" --remote --config api/wrangler.toml --file=api/schema.sql -y
 
+      # A brand-new Cloudflare account has no workers.dev subdomain yet, and
+      # wrangler needs one to publish a Worker with no custom domain
+      # configured. Cloudflare's dashboard asks for this interactively the
+      # first time you ever deploy a Worker there; a CI runner has nobody to
+      # answer that prompt, so pick one via the API instead of letting
+      # wrangler fail with an error nobody deploying from a phone can act on.
+      # A one-time thing per account - every future deploy skips this step.
+      - name: Register a workers.dev subdomain if this account needs one
+        run: |
+          existing="$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain")"
+          have_one="$(echo "$existing" | python3 -c "import sys,json; d=json.load(sys.stdin); print('yes' if (d.get('result') or {}).get('subdomain') else 'no')" 2>/dev/null || echo no)"
+          if [ "$have_one" = "yes" ]; then
+            echo "This account already has a workers.dev subdomain."
+            exit 0
+          fi
+
+          # Namespaced to this project and long enough not to collide with
+          # anyone else's account; registering it again later is a no-op.
+          CANDIDATE="calorie-counter-${CLOUDFLARE_ACCOUNT_ID:0:12}"
+          echo "Registering workers.dev subdomain: $CANDIDATE"
+          result="$(curl -sS -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" -d "{\"subdomain\":\"$CANDIDATE\"}" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain")"
+          ok="$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('success'))" 2>/dev/null || echo False)"
+          if [ "$ok" != "True" ]; then
+            echo "$result"
+            echo "::warning::Could not register a workers.dev subdomain automatically. This is a one-time step Cloudflare normally asks for on your first Worker: open https://dash.cloudflare.com/$CLOUDFLARE_ACCOUNT_ID/workers/onboarding, pick any name, tap Continue, then re-run this workflow. You will not need to do this again."
+          fi
+
+      # pipefail matters here: piping through tee to also save the log means
+      # the step's exit code is tee's by default, which is always 0 - so a
+      # failed wrangler deploy would otherwise be reported as a success.
       - name: Deploy the Worker
         id: deploy
         run: |
+          set -o pipefail
           npx wrangler deploy --config api/wrangler.toml 2>&1 | tee deploy.log
           URL="$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
