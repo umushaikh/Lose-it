@@ -80,12 +80,14 @@ bio you can set. Nothing leaves your phone unless you join a group.
     phone, but a profile shows the actual foods behind those totals, live, to
     everyone in the group, for whatever date the Friends tab is showing (today
     by default, same as the rest of the board).
-  - **Share a meal** — the share icon (↗) next to a meal's + button additionally
-    posts that whole breakfast/lunch/dinner/snacks to the group *feed* (as
-    opposed to a profile, which is looked up): every item in it, with full
-    nutrition, plus the total. Anyone in the group can tap it to add the whole
-    thing to their own diary in one go. Useful for calling attention to one
-    meal in the feed's timeline; profiles already show it either way.
+  - **Share a meal, or just one item** — the share icon (↗) next to a meal's
+    + button posts that whole breakfast/lunch/dinner/snacks to the group
+    *feed* (as opposed to a profile, which is looked up): every item in it,
+    with full nutrition, plus the total. The same icon next to a single
+    logged item shares just that one instead. Either way, anyone in the
+    group can tap the post to add it to their own diary in one go. Useful
+    for calling attention to something specific in the feed's timeline;
+    profiles already show all of it either way.
 - **Backup & restore** — export/import your data as a JSON file. API keys and
   group credentials are deliberately left out of the file.
 - **Dark by default** — an OLED-black theme with rounded cards, an open-bottom
