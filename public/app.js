@@ -642,12 +642,30 @@ function syncBodyScrollLock() {
   document.body.classList.toggle('modal-open', anyOpen);
 }
 
+// iOS does not shrink dvh for the on-screen keyboard, so a bottom-anchored
+// sheet ends up underneath it. visualViewport does report the space actually
+// left above the keyboard - publish it so sheets can size to it.
+function syncViewportHeight() {
+  const vv = window.visualViewport;
+  const height = vv ? vv.height : window.innerHeight;
+  document.documentElement.style.setProperty('--vvh', `${Math.round(height)}px`);
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', syncViewportHeight);
+  window.visualViewport.addEventListener('scroll', syncViewportHeight);
+}
+window.addEventListener('resize', syncViewportHeight);
+syncViewportHeight();
+
 function openModal(id) {
   document.getElementById(id).classList.remove('hidden');
   syncBodyScrollLock();
 }
 function closeModal(id) {
-  document.getElementById(id).classList.add('hidden');
+  const modal = document.getElementById(id);
+  modal.classList.add('hidden');
+  modal.classList.remove('searching');
   syncBodyScrollLock();
 }
 
@@ -1226,6 +1244,15 @@ function wireEvents() {
     state.searchResults = [];
     renderAddEntryFoodList(e.target.value);
   });
+
+  // While a search box has focus the sheet goes full height and sheds the
+  // buttons above the list, so the query and its results stay on screen.
+  [['add-entry-search', 'add-entry-modal'], ['recipe-ingredient-search', 'recipe-editor-modal']]
+    .forEach(([inputId, modalId]) => {
+      const input = document.getElementById(inputId);
+      const modal = document.getElementById(modalId);
+      input.addEventListener('focus', () => modal.classList.add('searching'));
+    });
   document.getElementById('search-online-btn').addEventListener('click', async () => {
     const query = document.getElementById('add-entry-search').value.trim();
     const status = document.getElementById('add-entry-status');

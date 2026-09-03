@@ -189,7 +189,15 @@ body {
 .meal-total { font-size: 13px; color: var(--text-dim); }
 
 .list { display: flex; flex-direction: column; }
-.scroll-list { max-height: 46dvh; overflow-y: auto; flex: 1; min-height: 120px; -webkit-overflow-scrolling: touch; }
+/* Takes whatever height is left in the sheet and scrolls inside it. */
+.scroll-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.modal:not(.searching) .scroll-list { max-height: 46dvh; }
 
 /* The tappable part of a logged row: a button, but laid out like the text it replaced. */
 .entry-open {
@@ -352,7 +360,12 @@ body {
 /* Modals */
 .modal {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Ends where the keyboard begins, so a bottom-anchored sheet is never
+     covered by it. --vvh is kept in sync with visualViewport by app.js. */
+  height: var(--vvh, 100%);
   background: rgba(15, 23, 42, 0.5);
   display: flex;
   align-items: flex-end;
@@ -361,11 +374,10 @@ body {
 .modal-sheet {
   background: var(--card);
   width: 100%;
-  /* dvh tracks the visible area as the phone keyboard opens, so the sheet
-     shrinks to fit rather than being pushed off-screen. */
-  max-height: 88dvh;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   overflow-y: auto;
   border-radius: 20px 20px 0 0;
   padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px));
@@ -374,15 +386,23 @@ body {
 /* Freezes the page behind an open sheet. */
 body.modal-open { overflow: hidden; }
 
-/* The search box stays put while its results scroll under it. */
-#add-entry-pane-search, #recipe-editor-modal form { display: flex; flex-direction: column; min-height: 0; }
-#add-entry-search, #recipe-ingredient-search {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--card);
-  flex-shrink: 0;
+/* A search sheet claims all the room above the keyboard, and only its results
+   scroll - so what you typed stays put at the top instead of being squeezed
+   into a sliver at the bottom. */
+.modal.searching .modal-sheet { height: 100%; padding-top: 10px; }
+.modal.searching .quick-actions { display: none; }
+.modal.searching .modal-head { margin-bottom: 4px; }
+
+#add-entry-pane-search, #recipe-editor-modal form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
 }
+#add-entry-search, #recipe-ingredient-search { flex-shrink: 0; }
+#add-entry-status { flex-shrink: 0; }
+#search-online-btn { flex-shrink: 0; padding: 9px 12px; font-size: 13px; margin-top: 8px; }
+
 .totals-readout { color: var(--accent); font-weight: 700; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .modal-head h3 { margin: 0; font-size: 17px; }
