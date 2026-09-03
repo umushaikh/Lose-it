@@ -19,7 +19,8 @@ there's no account, no server-side database, and no data leaves your phone.
 - **Food diary** — log meals (breakfast/lunch/dinner/snacks) for any day,
   see calories and macros remaining against your budget, and log exercise
   to add calories back.
-- **Food search** — a built-in database of 400+ foods with an icon on each:
+- **Food search** — a built-in database of 648 foods with an icon on each,
+  including 300 named restaurant meals across 76 chains and cuisines:
   common whole foods and staples, Emirati and Gulf cooking (machboos, harees,
   thereed, luqaimat, karak, camel meat), Levantine and Arabic dishes
   (shawarma, manakish, fattoush, knafeh), South, East and Southeast Asian,
@@ -28,12 +29,14 @@ there's no account, no server-side database, and no data leaves your phone.
   lookup against [Open Food Facts](https://world.openfoodfacts.org) for
   packaged products. Anything you log from either is saved to My Foods so
   it's one tap away next time.
-- **Eating out today** — from the Today tab, get a shortlist of restaurant
-  and fast-food meals that fit the calories you have left, highest protein
-  first, so a meal out doesn't blow the day. The shortlist is seeded by the
-  date, so it holds still while you read it and is different tomorrow. Tap
-  one to set the portion and log it. Chain figures are published values and
-  vary by branch and country — close, not exact.
+- **Eating out today** — from the Today tab, browse all 300 restaurant meals
+  against the calories you have left. Everything is listed: what fits comes
+  first (highest protein per calorie), and anything over budget follows in
+  red, marked with how far over it is, still loggable if you want it. Filter
+  by restaurant with the brand chips or search by dish or chain. Tap one to
+  set the portion and log it. Chain figures are published values where the
+  chain publishes them and close estimates otherwise; Gulf menus differ from
+  Western ones, so regional items use GCC figures. Close, not exact.
 - **Barcode scanning** — point the camera at a packaged product's barcode and
   it's looked up in Open Food Facts. Uses the browser's native barcode
   detector where available (Chrome/Android) and falls back to ZXing

@@ -48,7 +48,9 @@ const state = {
   recipes: [],
   recipeDraft: null, // recipe being built in the editor
   recipePickerRows: [], // ingredient search results, indexed by row
-  suggestRows: [], // eating-out shortlist, indexed by row
+  suggestRows: [], // eating-out list as rendered, indexed by row
+  suggestBrand: 'all', // active restaurant filter
+  suggestSearch: '',
   confirmFood: null, // scanned or photographed food awaiting confirmation
   pendingMeal: null, // meal the scan/photo was started from
   scanStream: null, // live camera stream while scanning (BarcodeDetector path)
@@ -307,7 +309,9 @@ function renderMacroBar(key, eaten, goal) {
 // database is visible by browsing rather than only turning up once you search.
 function renderFoods() {
   const q = state.foodSearch.trim().toLowerCase();
-  const matches = f => !q || f.name.toLowerCase().includes(q);
+  const matches = f => !q
+    || f.name.toLowerCase().includes(q)
+    || String(f.brand || '').toLowerCase().includes(q);
   const rows = [
     ...state.foods.filter(matches).map(f => ({ ...f, source: 'mine' })),
     ...FOOD_DB.filter(matches).map(f => ({ ...f, source: 'db' }))
@@ -322,7 +326,7 @@ function renderFoods() {
     ? rows.map((f, i) => `
       <div class="food-row" data-idx="${i}">
         <div class="entry-info">
-          <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(f.name)}</div>
+          <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(mealLabel(f))}</div>
           <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}
             <span class="source-tag">${SOURCE_LABEL[f.source]}</span></div>
         </div>
@@ -705,7 +709,11 @@ function openAddEntryModal(meal) {
 // database. Online (branded) results are merged in when you ask for them.
 function localMatches(query) {
   const q = query.trim().toLowerCase();
-  const matches = f => !q || f.name.toLowerCase().includes(q);
+  // Brand counts as a match, so "cinnabon" or "kfc" finds their menu items even
+  // though the brand is stored separately from the dish name.
+  const matches = f => !q
+    || f.name.toLowerCase().includes(q)
+    || String(f.brand || '').toLowerCase().includes(q);
   const mine = state.foods.filter(matches).map(f => ({ ...f, source: 'mine' }));
   const builtIn = FOOD_DB.filter(matches).map(f => ({ ...f, source: 'db' }));
   return [...mine, ...builtIn];
@@ -727,7 +735,7 @@ function renderAddEntryFoodList(query) {
     + results.map((f, i) => `
     <div class="food-row pick-row" data-idx="${i}">
       <button type="button" class="entry-info entry-open pick-open" data-idx="${i}">
-        <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(f.name)} <span class="chev">›</span></div>
+        <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(mealLabel(f))} <span class="chev">›</span></div>
         <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}
           <span class="source-tag">${SOURCE_LABEL[f.source] || ''}</span></div>
       </button>
@@ -1077,56 +1085,98 @@ function dateSeed(dateStr) {
   return [...dateStr].reduce((a, c) => a + c.charCodeAt(0) * 31, 7);
 }
 
-function suggestMeals(remaining, proteinLeft) {
-  const pool = FOOD_DB.filter(f => f.restaurant);
-  // Anything at or under the remaining budget is fair game; below a quarter of
-  // it is a snack rather than a meal, so it is not offered as one.
-  const fits = pool.filter(f => f.calories <= remaining && f.calories >= remaining * 0.25);
-  const shuffled = seededShuffle(fits, dateSeed(state.currentDate));
-  // Within the day's shuffle, lead with the options that give the most protein
-  // for their calories - the ones that leave the day in the best shape.
-  return shuffled
-    .map((f, i) => ({ food: f, order: i, density: f.protein / Math.max(f.calories, 1) }))
-    .sort((a, b) => (b.density - a.density) || (a.order - b.order))
-    .slice(0, 12)
-    .map(x => x.food);
-}
-
-function renderSuggestions() {
+function remainingToday() {
   const goals = computeGoals(state.settings);
   const eaten = sumDay(state.diaryDay);
   const exercise = state.exerciseDay.reduce((s, e) => s + e.calories, 0);
-  const remaining = goals.goalCalories - eaten.calories + exercise;
-  const proteinLeft = Math.max(goals.macros.proteinG - eaten.protein, 0);
+  return {
+    remaining: goals.goalCalories - eaten.calories + exercise,
+    proteinLeft: Math.max(goals.macros.proteinG - eaten.protein, 0)
+  };
+}
 
+// Every restaurant meal is listed - nothing is hidden for being too big. What
+// fits comes first, ordered by protein per calorie so the pick that leaves the
+// day in the best shape leads; the rest follow, smallest overshoot first, and
+// are marked as over budget rather than removed.
+function orderedMeals(remaining, brand, query) {
+  const q = query.trim().toLowerCase();
+  const pool = FOOD_DB.filter(f => f.restaurant
+    && (brand === 'all' || f.brand === brand)
+    && (!q || f.name.toLowerCase().includes(q) || String(f.brand).toLowerCase().includes(q)));
+
+  const seed = dateSeed(state.currentDate);
+  const withOrder = seededShuffle(pool, seed).map((f, i) => ({ f, i }));
+  const fits = withOrder
+    .filter(x => x.f.calories <= remaining)
+    .sort((a, b) => (b.f.protein / Math.max(b.f.calories, 1)) - (a.f.protein / Math.max(a.f.calories, 1)) || a.i - b.i);
+  const over = withOrder
+    .filter(x => x.f.calories > remaining)
+    .sort((a, b) => a.f.calories - b.f.calories);
+  return { fits: fits.map(x => x.f), over: over.map(x => x.f) };
+}
+
+// Restaurant meals read "Brand — Dish", except where the name already carries
+// the brand ("KFC Zinger Burger", "Big Mac (McDonald's)") - prefixing those
+// again would just stutter.
+function mealLabel(food) {
+  const name = String(food.name);
+  const brand = String(food.brand || '');
+  if (!brand) return name;
+  const lowerName = name.toLowerCase();
+  const lowerBrand = brand.toLowerCase();
+  if (lowerName.startsWith(lowerBrand) || lowerName.includes(`(${lowerBrand})`)) return name;
+  return `${brand} — ${name}`;
+}
+
+function renderSuggestBrands() {
+  const brands = [...new Set(FOOD_DB.filter(f => f.restaurant).map(f => f.brand))].sort();
+  const row = document.getElementById('suggest-brands');
+  row.innerHTML = [['all', 'All']].concat(brands.map(b => [b, b]))
+    .map(([value, label]) => `
+      <button type="button" class="chip ${state.suggestBrand === value ? 'active' : ''}"
+        data-brand="${escapeAttr(value)}">${escapeHtml(label)}</button>`).join('');
+}
+
+function renderSuggestions() {
+  const { remaining, proteinLeft } = remainingToday();
   const headline = document.getElementById('suggest-headline');
   const list = document.getElementById('suggest-list');
 
-  if (remaining <= 0) {
-    headline.textContent = `No calories left today — you are ${Math.abs(remaining)} over.`;
-    list.innerHTML = `<div class="empty-hint">Nothing to suggest for today. Tomorrow's budget starts fresh.</div>`;
+  headline.textContent = remaining > 0
+    ? `${remaining.toLocaleString()} cal left${proteinLeft ? ` · ${proteinLeft}g protein to go` : ''}`
+    : `${Math.abs(remaining).toLocaleString()} cal over budget today`;
+  headline.classList.toggle('negative', remaining <= 0);
+
+  const { fits, over } = orderedMeals(remaining, state.suggestBrand, state.suggestSearch);
+  state.suggestRows = [...fits, ...over];
+
+  if (!state.suggestRows.length) {
+    list.innerHTML = `<div class="empty-hint">Nothing matches that filter.</div>`;
     return;
   }
 
-  const picks = suggestMeals(remaining, proteinLeft);
-  headline.textContent = `${remaining.toLocaleString()} cal left${proteinLeft ? ` · ${proteinLeft}g protein to go` : ''}`;
-
-  if (!picks.length) {
-    list.innerHTML = `<div class="empty-hint">Only ${remaining} cal left — too little for a meal out.
-      A coffee or a light snack from Search would fit better.</div>`;
-    return;
-  }
-
-  state.suggestRows = picks;
-  list.innerHTML = picks.map((f, i) => `
-    <div class="food-row pick-row">
+  const row = (f, i, isOver) => `
+    <div class="food-row pick-row ${isOver ? 'over-budget' : ''}">
       <button type="button" class="entry-info entry-open suggest-open" data-idx="${i}">
-        <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(f.name)}</div>
-        <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}
-          ${f.brand ? `<span class="source-tag">${escapeHtml(f.brand)}</span>` : ''}</div>
+        <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(mealLabel(f))} <span class="chev">›</span></div>
+        <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}</div>
       </button>
-      <div class="qty-picker"><span class="left-after">${(remaining - f.calories).toLocaleString()} left</span></div>
-    </div>`).join('');
+      <div class="qty-picker"><span class="left-after ${isOver ? 'over' : ''}">${isOver
+        ? `+${(f.calories - remaining).toLocaleString()} over`
+        : `${(remaining - f.calories).toLocaleString()} left`}</span></div>
+    </div>`;
+
+  const parts = [];
+  if (fits.length) {
+    parts.push(`<div class="list-hint">${fits.length} fit${fits.length === 1 ? 's' : ''} what's left</div>`);
+    parts.push(fits.map((f, i) => row(f, i, false)).join(''));
+  }
+  if (over.length) {
+    parts.push(`<div class="list-hint over">${over.length} over budget — still loggable</div>`);
+    parts.push(over.map((f, i) => row(f, fits.length + i, true)).join(''));
+  }
+  list.innerHTML = parts.join('');
 }
 
 // ---- Recipes ----
@@ -1214,7 +1264,7 @@ function renderRecipeIngredientPicker(query) {
     ? results.map((f, i) => `
       <div class="food-row pick-row">
         <div class="entry-info">
-          <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(f.name)}</div>
+          <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(mealLabel(f))}</div>
           <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal</div>
         </div>
         <div class="qty-picker">
@@ -1428,8 +1478,23 @@ function wireEvents() {
 
   // Eating-out suggestions
   document.getElementById('suggest-btn').addEventListener('click', () => {
+    state.suggestBrand = 'all';
+    state.suggestSearch = '';
+    document.getElementById('suggest-search').value = '';
+    renderSuggestBrands();
     renderSuggestions();
     openModal('suggest-modal');
+  });
+  document.getElementById('suggest-brands').addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    state.suggestBrand = chip.dataset.brand;
+    renderSuggestBrands();
+    renderSuggestions();
+  });
+  document.getElementById('suggest-search').addEventListener('input', e => {
+    state.suggestSearch = e.target.value;
+    renderSuggestions();
   });
   document.getElementById('suggest-list').addEventListener('click', e => {
     const btn = e.target.closest('.suggest-open');
