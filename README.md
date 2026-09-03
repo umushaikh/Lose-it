@@ -21,7 +21,13 @@ is.
   Includes protein/carb/fat targets from an adjustable macro split.
 - **Food diary** — log meals (breakfast/lunch/dinner/snacks) for any day,
   see calories and macros remaining against your budget, and log exercise
-  to add calories back.
+  to add calories back. Each meal shows a running total of protein, carbs,
+  fat, fiber, sugar and sodium for what's logged in it so far.
+- **Fuller nutrition** — protein, carbs and fat, plus fiber, sugar and
+  sodium, on every food you log, save, or build into a recipe. Branded
+  lookups pull the real figures from Open Food Facts; the built-in database
+  and restaurant meals use close estimates the same way their calories and
+  macros always have.
 - **Food search** — a built-in database of 648 foods with an icon on each,
   including 300 named restaurant meals across 76 chains and cuisines:
   common whole foods and staples, Emirati and Gulf cooking (machboos, harees,
@@ -64,6 +70,13 @@ is.
   Cloudflare Worker and a D1 database on your own Cloudflare account, which
   costs nothing at this size. See `api/README.md`. Without it the app behaves
   exactly as it always has.
+  - **Share a meal** — tap the share icon on anything you've logged to post
+    that exact food to the group feed: name, serving, full nutrition. Anyone
+    in the group can tap it to add it straight to their own diary, at the
+    same amount or their own. This is a step up from the rest of Friends,
+    worth being clear about: everywhere else, only your day's totals leave
+    your phone; sharing a meal puts the specific food itself in front of the
+    group, and only happens when you deliberately tap Share.
 - **Backup & restore** — export/import your data as a JSON file. API keys and
   group credentials are deliberately left out of the file.
 - **Dark by default** — an OLED-black theme with rounded cards, an open-bottom

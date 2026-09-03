@@ -261,6 +261,23 @@ function render() {
   populateSettingsForm();
 }
 
+// Sums one meal's logged items into a single macro line, scaled by qty like
+// everywhere else nutrition gets totalled.
+function sumMeal(items) {
+  return items.reduce((acc, i) => {
+    const t = scaleNutrition(i, i.qty);
+    return {
+      calories: acc.calories + t.calories,
+      protein: acc.protein + t.protein,
+      carbs: acc.carbs + t.carbs,
+      fat: acc.fat + t.fat,
+      fiber: acc.fiber + t.fiber,
+      sugar: acc.sugar + t.sugar,
+      sodium: acc.sodium + t.sodium
+    };
+  }, { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 });
+}
+
 function sumDay(diaryDay) {
   let calories = 0, protein = 0, carbs = 0, fat = 0;
   MEALS.forEach(m => {
@@ -309,6 +326,15 @@ function renderToday() {
     const suggested = Math.round((goals.goalCalories + exerciseCal) * m.share);
     document.getElementById(`meal-${m.key}-suggested`).textContent =
       suggested > 0 ? `${suggested.toLocaleString()} calories suggested` : '';
+
+    const macrosEl = document.getElementById(`meal-${m.key}-macros`);
+    macrosEl.classList.toggle('hidden', items.length === 0);
+    if (items.length) {
+      const s = sumMeal(items);
+      macrosEl.textContent =
+        `P${Math.round(s.protein)} · C${Math.round(s.carbs)} · F${Math.round(s.fat)} · ` +
+        `Fiber ${Math.round(s.fiber)} · Sugar ${Math.round(s.sugar)} · Na ${Math.round(s.sodium)}mg`;
+    }
     list.innerHTML = items.length
       ? items.map(i => {
         const t = scaleNutrition(i, i.qty);
@@ -316,12 +342,14 @@ function renderToday() {
         const amount = grams
           ? `${Math.round(i.qty * grams * 10) / 10} g`
           : `${Math.round(i.qty * 100) / 100} × ${escapeHtml(i.servingDesc || 'serving')}`;
+        const canShare = friends.group && friends.group.groupId;
         return `
         <div class="entry-row" data-entry-id="${i.id}" data-meal="${m.key}">
           <button type="button" class="entry-info entry-open" data-meal="${m.key}" data-entry-id="${i.id}">
             <div class="entry-name">${foodEmoji(i.name)} ${escapeHtml(i.name)}</div>
             <div class="entry-sub">${amount} · ${t.calories} cal · P${t.protein} C${t.carbs} F${t.fat}</div>
           </button>
+          ${canShare ? `<button class="icon-btn small share-entry-btn" data-meal="${m.key}" data-entry-id="${i.id}" title="Share to group">↗</button>` : ''}
           <button class="icon-btn small remove-entry-btn" data-meal="${m.key}" data-entry-id="${i.id}" title="Remove">✕</button>
         </div>`;
       }).join('')
@@ -1004,6 +1032,10 @@ function mapOnlineProduct(p) {
     protein: round(perServing ? n.proteins_serving : n.proteins_100g),
     carbs: round(perServing ? n.carbohydrates_serving : n.carbohydrates_100g),
     fat: round(perServing ? n.fat_serving : n.fat_100g),
+    fiber: round(perServing ? n.fiber_serving : n.fiber_100g),
+    sugar: round(perServing ? n.sugars_serving : n.sugars_100g),
+    // Open Food Facts reports sodium in grams, not milligrams like everywhere else here.
+    sodium: Math.round((Number(perServing ? n.sodium_serving : n.sodium_100g) || 0) * 1000),
     source: 'online'
   };
 }
@@ -1023,7 +1055,10 @@ function scaleNutrition(base, qty) {
     calories: Math.round((Number(base.calories) || 0) * qty),
     protein: round(base.protein),
     carbs: round(base.carbs),
-    fat: round(base.fat)
+    fat: round(base.fat),
+    fiber: round(base.fiber),
+    sugar: round(base.sugar),
+    sodium: Math.round((Number(base.sodium) || 0) * qty)
   };
 }
 
@@ -1036,10 +1071,13 @@ function refreshAmountTotals(prefix) {
     calories: form.calories.value,
     protein: form.protein.value,
     carbs: form.carbs.value,
-    fat: form.fat.value
+    fat: form.fat.value,
+    fiber: form.fiber ? form.fiber.value : 0,
+    sugar: form.sugar ? form.sugar.value : 0,
+    sodium: form.sodium ? form.sodium.value : 0
   }, qty);
   document.getElementById(`${prefix}-totals`).textContent =
-    `${totals.calories} cal · P${totals.protein} C${totals.carbs} F${totals.fat}`;
+    `${totals.calories} cal · P${totals.protein} C${totals.carbs} F${totals.fat} · Fiber ${totals.fiber} · Sugar ${totals.sugar} · Na ${totals.sodium}mg`;
   return totals;
 }
 
@@ -1072,8 +1110,8 @@ function wireGramsAndServings(prefix) {
 
   qtyInput.addEventListener('input', syncFromQty);
   if (gramsInput) gramsInput.addEventListener('input', syncFromGrams);
-  ['calories', 'protein', 'carbs', 'fat'].forEach(name => {
-    form[name].addEventListener('input', () => refreshAmountTotals(prefix));
+  ['calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'sodium'].forEach(name => {
+    if (form[name]) form[name].addEventListener('input', () => refreshAmountTotals(prefix));
   });
 
   // Editing "100 g" into "150 g" redefines what one serving is, so the
@@ -1084,9 +1122,10 @@ function wireGramsAndServings(prefix) {
     const current = basis();
     if (previous && current && current !== previous) {
       const factor = current / previous;
-      ['calories', 'protein', 'carbs', 'fat'].forEach(name => {
+      ['calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'sodium'].forEach(name => {
+        if (!form[name]) return;
         const value = Number(form[name].value) || 0;
-        form[name].value = name === 'calories'
+        form[name].value = (name === 'calories' || name === 'sodium')
           ? Math.round(value * factor)
           : Math.round(value * factor * 10) / 10;
       });
@@ -1095,6 +1134,35 @@ function wireGramsAndServings(prefix) {
     if (gramsRow) gramsRow.classList.toggle('hidden', !current);
     syncFromQty();
   });
+}
+
+// Reads a form's nutrition fields back out into a plain object. The
+// counterpart to fillNutritionFields, and for the same reason: every submit
+// handler that saves an amount editor's contents needs this, and writing it
+// once here is what stops one of them quietly dropping a field.
+function readNutritionFields(form) {
+  return {
+    calories: Number(form.calories.value) || 0,
+    protein: Number(form.protein.value) || 0,
+    carbs: Number(form.carbs.value) || 0,
+    fat: Number(form.fat.value) || 0,
+    fiber: form.fiber ? Number(form.fiber.value) || 0 : 0,
+    sugar: form.sugar ? Number(form.sugar.value) || 0 : 0,
+    sodium: form.sodium ? Number(form.sodium.value) || 0 : 0
+  };
+}
+
+// Fills a form's nutrition fields from any food-shaped object. Shared by
+// every place that opens an amount editor, so the extended macros
+// (fiber/sugar/sodium) only have to be wired here once.
+function fillNutritionFields(form, food) {
+  form.calories.value = food.calories || 0;
+  form.protein.value = food.protein || 0;
+  form.carbs.value = food.carbs || 0;
+  form.fat.value = food.fat || 0;
+  if (form.fiber) form.fiber.value = food.fiber || 0;
+  if (form.sugar) form.sugar.value = food.sugar || 0;
+  if (form.sodium) form.sodium.value = food.sodium || 0;
 }
 
 // Called whenever an editor is opened, so the reference label and the stored
@@ -1115,10 +1183,7 @@ function openEntryEditor(meal, entry) {
   const form = document.getElementById('edit-entry-form');
   form.name.value = entry.name;
   form.servingDesc.value = entry.servingDesc || '1 serving';
-  form.calories.value = entry.calories;
-  form.protein.value = entry.protein;
-  form.carbs.value = entry.carbs;
-  form.fat.value = entry.fat;
+  fillNutritionFields(form, entry);
   document.getElementById('edit-entry-qty').value = entry.qty;
   document.getElementById('edit-entry-meal').value = meal;
 
@@ -1136,10 +1201,7 @@ function openConfirmFood(food, note) {
   document.getElementById('confirm-food-title').textContent = food.name;
   document.getElementById('confirm-food-note').textContent = note || '';
   const form = document.getElementById('confirm-food-form');
-  form.calories.value = food.calories;
-  form.protein.value = food.protein;
-  form.carbs.value = food.carbs;
-  form.fat.value = food.fat;
+  fillNutritionFields(form, food);
   form.servingDesc.value = food.servingDesc;
   document.getElementById('confirm-food-qty').value = 1;
   primeAmountEditor('confirm-food', form.servingDesc.value);
@@ -1270,8 +1332,11 @@ function recipeTotals(recipe) {
     calories: acc.calories + i.calories * i.qty,
     protein: acc.protein + i.protein * i.qty,
     carbs: acc.carbs + i.carbs * i.qty,
-    fat: acc.fat + i.fat * i.qty
-  }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+    fat: acc.fat + i.fat * i.qty,
+    fiber: acc.fiber + (i.fiber || 0) * i.qty,
+    sugar: acc.sugar + (i.sugar || 0) * i.qty,
+    sodium: acc.sodium + (i.sodium || 0) * i.qty
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 });
   const servings = Math.max(recipe.servings || 1, 0.25);
   return {
     total: totals,
@@ -1279,7 +1344,10 @@ function recipeTotals(recipe) {
       calories: Math.round(totals.calories / servings),
       protein: Math.round((totals.protein / servings) * 10) / 10,
       carbs: Math.round((totals.carbs / servings) * 10) / 10,
-      fat: Math.round((totals.fat / servings) * 10) / 10
+      fat: Math.round((totals.fat / servings) * 10) / 10,
+      fiber: Math.round((totals.fiber / servings) * 10) / 10,
+      sugar: Math.round((totals.sugar / servings) * 10) / 10,
+      sodium: Math.round(totals.sodium / servings)
     }
   };
 }
@@ -1368,26 +1436,24 @@ function openFoodEditor(food) {
   if (food) {
     form.name.value = food.name;
     form.servingDesc.value = food.servingDesc;
-    form.calories.value = food.calories;
-    form.protein.value = food.protein;
-    form.carbs.value = food.carbs;
-    form.fat.value = food.fat;
+    fillNutritionFields(form, food);
   }
   openModal('food-editor-modal');
 }
 
-function openLogFoodModal(food) {
+function openLogFoodModal(food, startQty = 1) {
   // Held as an object rather than an id, since built-in foods aren't stored.
   state.logFoodTarget = food;
   const form = document.getElementById('log-food-form');
   form.servingDesc.value = food.servingDesc || '1 serving';
-  form.calories.value = food.calories;
-  form.protein.value = food.protein;
-  form.carbs.value = food.carbs;
-  form.fat.value = food.fat;
+  fillNutritionFields(form, food);
   primeAmountEditor('log-food', form.servingDesc.value);
   document.getElementById('log-food-title').textContent = `Log ${food.name}`;
-  document.getElementById('log-food-qty').value = 1;
+  const qtyInput = document.getElementById('log-food-qty');
+  qtyInput.value = startQty;
+  // Keeps the grams box in step with a non-default starting quantity (a
+  // shared meal's serving count, say), the same way typing a new qty would.
+  qtyInput.dispatchEvent(new Event('input'));
   refreshAmountTotals('log-food');
   // Defaults to the meal whose + was tapped, when it was opened that way.
   document.getElementById('log-food-meal').value = state.pendingMeal || 'breakfast';
@@ -1429,6 +1495,35 @@ function timeAgo(ms) {
   const hours = Math.round(mins / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.round(hours / 24)}d ago`;
+}
+
+// Posts one logged item to the group feed as its own food - name, serving,
+// full macros - rather than folding it into the day's summary numbers. This
+// is a bigger privacy step than the day total is: a specific thing you ate
+// is now visible to the group, not just a count. It only ever happens from
+// this explicit tap, never automatically.
+async function shareMealToGroup(entry) {
+  if (!(await groups.isJoined())) return;
+  try {
+    await groups.postEvent({
+      kind: 'meal',
+      meal: {
+        name: entry.name,
+        servingDesc: entry.servingDesc || '1 serving',
+        qty: entry.qty,
+        calories: entry.calories,
+        protein: entry.protein,
+        carbs: entry.carbs,
+        fat: entry.fat,
+        fiber: entry.fiber,
+        sugar: entry.sugar,
+        sodium: entry.sodium
+      }
+    });
+    if (state.activeTab === 'friends') refreshBoard();
+  } catch (err) {
+    alert(err.message || 'Could not share that to the group.');
+  }
 }
 
 async function refreshBoard(showSpinner = false) {
@@ -1547,6 +1642,10 @@ function renderFriends() {
       </div>`;
   }).join('') || '<div class="empty-hint">Nobody here yet.</div>';
 
+  // "Add to my diary" needs the exact shared macros back, not a re-parse of
+  // the feed HTML, so keep them addressable by event id.
+  friends.mealShares = {};
+
   const feedEl = document.getElementById('friends-feed');
   feedEl.innerHTML = data.events.length
     ? data.events.map(e => {
@@ -1559,6 +1658,16 @@ function renderFriends() {
             ${e.text ? `<div class="feed-text">${escapeHtml(e.text)}</div>` : ''}
             ${e.photoKey ? `<img class="feed-photo" data-photo-key="${escapeHtml(e.photoKey)}" alt="Meal photo shared by ${who}" />` : ''}
             ${e.calories ? `<div class="feed-meta">${e.calories.toLocaleString()} cal</div>` : ''}
+          </div>`;
+      }
+      if (e.kind === 'meal' && e.meal) {
+        friends.mealShares[e.id] = e.meal;
+        return `
+          <div class="feed-item">
+            <div class="feed-head"><strong>${who}</strong><span>${when}</span></div>
+            <div class="entry-name">${foodEmoji(e.meal.name)} ${escapeHtml(e.meal.name)}</div>
+            <div class="feed-meta">${e.meal.qty !== 1 ? `${e.meal.qty}× · ` : ''}${escapeHtml(e.meal.servingDesc || '')} · ${Math.round(e.meal.calories * e.meal.qty)} cal</div>
+            <button type="button" class="secondary-btn small add-shared-meal-btn" data-event-id="${e.id}">+ Add to my diary</button>
           </div>`;
       }
       const line = e.kind === 'joined'
@@ -1652,6 +1761,15 @@ function wireFriends() {
   document.getElementById('friends-refresh-btn').addEventListener('click', async () => {
     await groups.flush().catch(() => {});
     refreshBoard(true);
+  });
+
+  document.getElementById('friends-feed').addEventListener('click', e => {
+    const btn = e.target.closest('.add-shared-meal-btn');
+    if (!btn) return;
+    const meal = friends.mealShares[btn.dataset.eventId];
+    if (!meal) return;
+    closeAllModals();
+    openLogFoodModal({ ...meal, source: 'shared' }, meal.qty || 1);
   });
 
   document.getElementById('friends-invite-btn').addEventListener('click', () => {
@@ -1761,6 +1879,12 @@ function wireEvents() {
       const meal = openBtn.dataset.meal;
       const entry = state.diaryDay[meal].find(i => i.id === openBtn.dataset.entryId);
       if (entry) openEntryEditor(meal, entry);
+      return;
+    }
+    const shareBtn = e.target.closest('.share-entry-btn');
+    if (shareBtn) {
+      const entry = state.diaryDay[shareBtn.dataset.meal].find(i => i.id === shareBtn.dataset.entryId);
+      if (entry) await shareMealToGroup(entry);
       return;
     }
     const removeBtn = e.target.closest('.remove-entry-btn');
@@ -1998,10 +2122,7 @@ function wireEvents() {
     const food = {
       name: state.confirmFood.name,
       servingDesc: form.servingDesc.value.trim() || '1 serving',
-      calories: Number(form.calories.value) || 0,
-      protein: Number(form.protein.value) || 0,
-      carbs: Number(form.carbs.value) || 0,
-      fat: Number(form.fat.value) || 0
+      ...readNutritionFields(form)
     };
     await db.addDiaryEntry(state.currentDate, meal, { ...food, qty });
     const alreadySaved = state.foods.some(f => f.name.toLowerCase() === food.name.toLowerCase());
@@ -2052,7 +2173,10 @@ function wireEvents() {
       calories: food.calories,
       protein: food.protein,
       carbs: food.carbs,
-      fat: food.fat
+      fat: food.fat,
+      fiber: food.fiber || 0,
+      sugar: food.sugar || 0,
+      sodium: food.sodium || 0
     });
     renderRecipeDraft();
   });
@@ -2114,7 +2238,10 @@ function wireEvents() {
       calories: form.calories.value,
       protein: form.protein.value || 0,
       carbs: form.carbs.value || 0,
-      fat: form.fat.value || 0
+      fat: form.fat.value || 0,
+      fiber: form.fiber.value || 0,
+      sugar: form.sugar.value || 0,
+      sodium: form.sodium.value || 0
     };
     if (state.foodEditing) await db.updateFood(state.foodEditing.id, payload);
     else await db.addFood(payload);
@@ -2134,10 +2261,7 @@ function wireEvents() {
     const food = {
       name: target.name,
       servingDesc: form.servingDesc.value.trim() || '1 serving',
-      calories: Number(form.calories.value) || 0,
-      protein: Number(form.protein.value) || 0,
-      carbs: Number(form.carbs.value) || 0,
-      fat: Number(form.fat.value) || 0
+      ...readNutritionFields(form)
     };
     await db.addDiaryEntry(state.currentDate, meal, { ...food, qty });
     const alreadySaved = state.foods.some(f => f.name.toLowerCase() === food.name.toLowerCase());
@@ -2162,10 +2286,7 @@ function wireEvents() {
       name: form.name.value.trim() || 'Food',
       servingDesc: form.servingDesc.value.trim() || '1 serving',
       qty: Number(document.getElementById('edit-entry-qty').value) || 0,
-      calories: Number(form.calories.value) || 0,
-      protein: Number(form.protein.value) || 0,
-      carbs: Number(form.carbs.value) || 0,
-      fat: Number(form.fat.value) || 0
+      ...readNutritionFields(form)
     };
     if (newMeal === meal) {
       await db.updateDiaryEntry(state.currentDate, meal, id, patch);

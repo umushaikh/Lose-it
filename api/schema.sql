@@ -64,3 +64,27 @@ CREATE TABLE IF NOT EXISTS photo_sizes (
   bytes       INTEGER NOT NULL,
   created_at  INTEGER NOT NULL
 );
+
+-- One row per shared meal, keyed to the event that carries it in the feed.
+-- A separate table rather than new columns on events, so this stays a plain
+-- additive CREATE TABLE IF NOT EXISTS against a database that already exists
+-- in the wild - SQLite/D1 can't add a column to an existing table
+-- idempotently the way it can create one.
+--
+-- What lands here is the actual food someone logged - name, serving, full
+-- macros - not just a day total. That is a real step up in what a group
+-- sees about each other, and only happens when a member deliberately taps
+-- Share; nothing here is automatic.
+CREATE TABLE IF NOT EXISTS meal_shares (
+  event_id     TEXT PRIMARY KEY,
+  name         TEXT NOT NULL,
+  serving_desc TEXT,
+  qty          REAL NOT NULL DEFAULT 1,
+  calories     INTEGER NOT NULL DEFAULT 0,
+  protein      REAL NOT NULL DEFAULT 0,
+  carbs        REAL NOT NULL DEFAULT 0,
+  fat          REAL NOT NULL DEFAULT 0,
+  fiber        REAL NOT NULL DEFAULT 0,
+  sugar        REAL NOT NULL DEFAULT 0,
+  sodium       REAL NOT NULL DEFAULT 0
+);

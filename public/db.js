@@ -111,7 +111,7 @@ const db = {
     return [...loadDb().foods].sort((a, b) => a.name.localeCompare(b.name));
   },
 
-  async addFood({ name, servingDesc, calories, protein, carbs, fat }) {
+  async addFood({ name, servingDesc, calories, protein, carbs, fat, fiber, sugar, sodium }) {
     const store = loadDb();
     const food = {
       id: uid(),
@@ -120,7 +120,10 @@ const db = {
       calories: Number(calories) || 0,
       protein: Number(protein) || 0,
       carbs: Number(carbs) || 0,
-      fat: Number(fat) || 0
+      fat: Number(fat) || 0,
+      fiber: Number(fiber) || 0,
+      sugar: Number(sugar) || 0,
+      sodium: Number(sodium) || 0
     };
     store.foods.push(food);
     saveDb(store);
@@ -161,7 +164,10 @@ const db = {
       calories: Number(entry.calories) || 0,
       protein: Number(entry.protein) || 0,
       carbs: Number(entry.carbs) || 0,
-      fat: Number(entry.fat) || 0
+      fat: Number(entry.fat) || 0,
+      fiber: Number(entry.fiber) || 0,
+      sugar: Number(entry.sugar) || 0,
+      sodium: Number(entry.sodium) || 0
     };
     day[meal].push(item);
     saveDb(store);
@@ -176,7 +182,7 @@ const db = {
     ['name', 'servingDesc'].forEach(k => {
       if (patch[k] != null) entry[k] = patch[k];
     });
-    ['qty', 'calories', 'protein', 'carbs', 'fat'].forEach(k => {
+    ['qty', 'calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar', 'sodium'].forEach(k => {
       if (patch[k] != null) entry[k] = Number(patch[k]) || 0;
     });
     saveDb(store);
@@ -264,7 +270,10 @@ const db = {
         calories: Number(i.calories) || 0,
         protein: Number(i.protein) || 0,
         carbs: Number(i.carbs) || 0,
-        fat: Number(i.fat) || 0
+        fat: Number(i.fat) || 0,
+        fiber: Number(i.fiber) || 0,
+        sugar: Number(i.sugar) || 0,
+        sodium: Number(i.sodium) || 0
       }))
     };
     store.recipes.push(recipe);

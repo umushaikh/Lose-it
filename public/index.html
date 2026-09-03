@@ -74,6 +74,7 @@
             <div class="meal-head-right"><span id="meal-breakfast-total" class="meal-total">0 cal</span>
               <button class="icon-btn add-meal-btn" data-meal="breakfast" title="Add food">+</button></div>
           </div>
+          <div id="meal-breakfast-macros" class="meal-macros hidden"></div>
           <div id="meal-breakfast-list" class="list"></div>
         </div>
 
@@ -83,6 +84,7 @@
             <div class="meal-head-right"><span id="meal-lunch-total" class="meal-total">0 cal</span>
               <button class="icon-btn add-meal-btn" data-meal="lunch" title="Add food">+</button></div>
           </div>
+          <div id="meal-lunch-macros" class="meal-macros hidden"></div>
           <div id="meal-lunch-list" class="list"></div>
         </div>
 
@@ -92,6 +94,7 @@
             <div class="meal-head-right"><span id="meal-dinner-total" class="meal-total">0 cal</span>
               <button class="icon-btn add-meal-btn" data-meal="dinner" title="Add food">+</button></div>
           </div>
+          <div id="meal-dinner-macros" class="meal-macros hidden"></div>
           <div id="meal-dinner-list" class="list"></div>
         </div>
 
@@ -101,6 +104,7 @@
             <div class="meal-head-right"><span id="meal-snacks-total" class="meal-total">0 cal</span>
               <button class="icon-btn add-meal-btn" data-meal="snacks" title="Add food">+</button></div>
           </div>
+          <div id="meal-snacks-macros" class="meal-macros hidden"></div>
           <div id="meal-snacks-list" class="list"></div>
         </div>
 
@@ -436,6 +440,11 @@
         <label class="field">Carbs (g)<input name="carbs" type="number" min="0" /></label>
         <label class="field">Fat (g)<input name="fat" type="number" min="0" /></label>
       </div>
+      <div class="field-row">
+        <label class="field">Fiber (g)<input name="fiber" type="number" min="0" /></label>
+        <label class="field">Sugar (g)<input name="sugar" type="number" min="0" /></label>
+        <label class="field">Sodium (mg)<input name="sodium" type="number" min="0" /></label>
+      </div>
       <button type="submit" class="primary-btn full">Save Food</button>
     </form>
   </div>
@@ -467,6 +476,11 @@
         <label class="field">Carbs<input name="carbs" type="number" step="any" min="0" /></label>
         <label class="field">Fat<input name="fat" type="number" step="any" min="0" /></label>
       </div>
+      <div class="field-row">
+        <label class="field">Fiber<input name="fiber" type="number" step="any" min="0" /></label>
+        <label class="field">Sugar<input name="sugar" type="number" step="any" min="0" /></label>
+      </div>
+      <label class="field">Sodium (mg)<input name="sodium" type="number" step="any" min="0" /></label>
 
       <label class="field">Meal
         <select id="log-food-meal">
@@ -524,6 +538,11 @@
         <label class="field">Carbs<input name="carbs" type="number" step="any" min="0" /></label>
         <label class="field">Fat<input name="fat" type="number" step="any" min="0" /></label>
       </div>
+      <div class="field-row">
+        <label class="field">Fiber<input name="fiber" type="number" step="any" min="0" /></label>
+        <label class="field">Sugar<input name="sugar" type="number" step="any" min="0" /></label>
+      </div>
+      <label class="field">Sodium (mg)<input name="sodium" type="number" step="any" min="0" /></label>
 
       <label class="field">Meal
         <select id="edit-entry-meal">
@@ -612,6 +631,11 @@
         <label class="field">Carbs<input name="carbs" type="number" step="any" min="0" /></label>
         <label class="field">Fat<input name="fat" type="number" step="any" min="0" /></label>
       </div>
+      <div class="field-row">
+        <label class="field">Fiber<input name="fiber" type="number" step="any" min="0" /></label>
+        <label class="field">Sugar<input name="sugar" type="number" step="any" min="0" /></label>
+      </div>
+      <label class="field">Sodium (mg)<input name="sodium" type="number" step="any" min="0" /></label>
 
       <label class="field">Meal
         <select id="confirm-food-meal">

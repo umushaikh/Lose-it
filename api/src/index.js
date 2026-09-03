@@ -90,6 +90,15 @@ function num(value, max = 100000) {
   return Math.max(-max, Math.min(max, n));
 }
 
+// Same clamping as num(), but keeps one decimal place instead of rounding to
+// a whole number - for gram-scale macros (protein/carbs/fat/fiber/sugar),
+// where num() would silently flatten 46.5g down to 47.
+function numDecimal(value, max = 100000) {
+  const n = Math.round((Number(value) || 0) * 10) / 10;
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(-max, Math.min(max, n));
+}
+
 function isDateStr(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
@@ -233,9 +242,13 @@ async function getBoard(request, env, member, origin) {
   `).bind(date, member.group_id).all();
 
   const events = await env.DB.prepare(`
-    SELECT e.id, e.member_id, e.kind, e.text, e.photo_key, e.calories, e.created_at, m.name AS member_name
+    SELECT e.id, e.member_id, e.kind, e.text, e.photo_key, e.calories, e.created_at, m.name AS member_name,
+           ms.name AS meal_name, ms.serving_desc AS meal_serving_desc, ms.qty AS meal_qty,
+           ms.calories AS meal_calories, ms.protein AS meal_protein, ms.carbs AS meal_carbs,
+           ms.fat AS meal_fat, ms.fiber AS meal_fiber, ms.sugar AS meal_sugar, ms.sodium AS meal_sodium
     FROM events e
     JOIN members m ON m.id = e.member_id
+    LEFT JOIN meal_shares ms ON ms.event_id = e.id
     WHERE e.group_id = ?
     ORDER BY e.created_at DESC
     LIMIT ?
@@ -270,30 +283,47 @@ async function getBoard(request, env, member, origin) {
       text: r.text,
       photoKey: r.photo_key,
       calories: r.calories,
-      createdAt: r.created_at
+      createdAt: r.created_at,
+      meal: r.meal_name == null ? null : {
+        name: r.meal_name,
+        servingDesc: r.meal_serving_desc,
+        qty: r.meal_qty,
+        calories: r.meal_calories,
+        protein: r.meal_protein,
+        carbs: r.meal_carbs,
+        fat: r.meal_fat,
+        fiber: r.meal_fiber,
+        sugar: r.meal_sugar,
+        sodium: r.meal_sodium
+      }
     }))
   }, 200, origin);
 }
 
-// Deletes the R2 object and its size-accounting row for every event about to
-// age out of the 90-day feed window. Without this, pruning the feed only ever
-// shrank the events table - the photos themselves stayed in R2 forever, so
-// storage would grow without bound even though nothing looked wrong in the
-// feed. Best-effort: a photo delete failing here shouldn't block posting the
-// new event, so each is caught rather than left to abort the batch.
-async function reapExpiredPhotos(env, groupId, now) {
+// Cleans up the child rows of every event about to age out of the 90-day feed
+// window - the R2 photo and its size-accounting row for a photo event, the
+// meal_shares row for a shared-meal event. Without this, pruning the feed
+// only ever shrank the events table: the photo stayed in R2 forever (storage
+// growing without bound even though nothing looked wrong in the feed), and a
+// meal_shares row would sit there orphaned once its event was gone. Both are
+// best-effort - a delete failing here shouldn't block posting the new event,
+// so each is caught rather than left to abort the batch.
+async function reapExpiringEvents(env, groupId, now) {
   const cutoff = now - EVENT_RETENTION_DAYS * 86400000;
   const expiring = await env.DB.prepare(
-    'SELECT photo_key FROM events WHERE group_id = ? AND created_at < ? AND photo_key IS NOT NULL'
+    'SELECT id, photo_key FROM events WHERE group_id = ? AND created_at < ?'
   ).bind(groupId, cutoff).all();
 
   for (const row of expiring.results || []) {
     try {
-      if (env.PHOTOS) await env.PHOTOS.delete(row.photo_key);
-      await env.DB.prepare('DELETE FROM photo_sizes WHERE photo_key = ?').bind(row.photo_key).run();
+      if (row.photo_key) {
+        if (env.PHOTOS) await env.PHOTOS.delete(row.photo_key);
+        await env.DB.prepare('DELETE FROM photo_sizes WHERE photo_key = ?').bind(row.photo_key).run();
+      }
+      await env.DB.prepare('DELETE FROM meal_shares WHERE event_id = ?').bind(row.id).run();
     } catch {
-      // Leaves that one object as a small amount of untracked storage rather
-      // than risk the request; the next post through this group retries it.
+      // Leaves that one row's child data untracked rather than risk the
+      // request; the next post through this group retries it.
     }
   }
 }
@@ -301,23 +331,52 @@ async function reapExpiredPhotos(env, groupId, now) {
 async function postEvent(request, env, member, origin) {
   const body = await request.json().catch(() => ({}));
   const kind = String(body.kind || '').trim();
-  if (!['photo', 'weigh_in', 'note', 'day_done'].includes(kind)) {
+  if (!['photo', 'weigh_in', 'note', 'day_done', 'meal'].includes(kind)) {
     return fail('Unknown event kind', 400, origin);
   }
   const now = Date.now();
   const text = body.text == null ? null : String(body.text).trim().slice(0, 280);
   const photoKey = body.photoKey == null ? null : String(body.photoKey).slice(0, 200);
   const calories = body.calories == null ? null : num(body.calories);
+  const eventId = crypto.randomUUID();
 
-  await reapExpiredPhotos(env, member.group_id, now);
+  let meal = null;
+  if (kind === 'meal') {
+    const m = body.meal || {};
+    const name = String(m.name || '').trim().slice(0, 120);
+    if (!name) return fail('A shared meal needs a name', 400, origin);
+    meal = {
+      name,
+      servingDesc: String(m.servingDesc || '1 serving').slice(0, 60),
+      qty: Math.max(0, Math.min(1000, Number(m.qty) || 1)),
+      calories: num(m.calories),
+      protein: numDecimal(m.protein, 2000),
+      carbs: numDecimal(m.carbs, 2000),
+      fat: numDecimal(m.fat, 2000),
+      fiber: numDecimal(m.fiber, 500),
+      sugar: numDecimal(m.sugar, 2000),
+      sodium: num(m.sodium, 20000)
+    };
+  }
 
-  await env.DB.batch([
+  await reapExpiringEvents(env, member.group_id, now);
+
+  const writes = [
     env.DB.prepare('INSERT INTO events (id, group_id, member_id, kind, text, photo_key, calories, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(crypto.randomUUID(), member.group_id, member.id, kind, text, photoKey, calories, now),
+      .bind(eventId, member.group_id, member.id, kind, text, photoKey, calories, now),
     // Keeps the table bounded without anyone having to remember to prune it.
     env.DB.prepare('DELETE FROM events WHERE group_id = ? AND created_at < ?')
       .bind(member.group_id, now - EVENT_RETENTION_DAYS * 86400000)
-  ]);
+  ];
+  if (meal) {
+    writes.push(
+      env.DB.prepare(`
+        INSERT INTO meal_shares (event_id, name, serving_desc, qty, calories, protein, carbs, fat, fiber, sugar, sodium)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(eventId, meal.name, meal.servingDesc, meal.qty, meal.calories, meal.protein, meal.carbs, meal.fat, meal.fiber, meal.sugar, meal.sodium)
+    );
+  }
+  await env.DB.batch(writes);
 
   return json({ ok: true }, 201, origin);
 }
