@@ -43,6 +43,7 @@ const state = {
   recipes: [],
   recipeDraft: null, // recipe being built in the editor
   recipePickerRows: [], // ingredient search results, indexed by row
+  suggestRows: [], // eating-out shortlist, indexed by row
   confirmFood: null, // scanned or photographed food awaiting confirmation
   pendingMeal: null, // meal the scan/photo was started from
   scanStream: null, // live camera stream while scanning (BarcodeDetector path)
@@ -269,7 +270,7 @@ function renderToday() {
         return `
         <div class="entry-row" data-entry-id="${i.id}" data-meal="${m.key}">
           <button type="button" class="entry-info entry-open" data-meal="${m.key}" data-entry-id="${i.id}">
-            <div class="entry-name">${escapeHtml(i.name)}</div>
+            <div class="entry-name">${foodEmoji(i.name)} ${escapeHtml(i.name)}</div>
             <div class="entry-sub">${amount} · ${t.calories} cal · P${t.protein} C${t.carbs} F${t.fat}</div>
           </button>
           <button class="icon-btn small remove-entry-btn" data-meal="${m.key}" data-entry-id="${i.id}" title="Remove">✕</button>
@@ -316,7 +317,7 @@ function renderFoods() {
     ? rows.map((f, i) => `
       <div class="food-row" data-idx="${i}">
         <div class="entry-info">
-          <div class="entry-name">${escapeHtml(f.name)}</div>
+          <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(f.name)}</div>
           <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}
             <span class="source-tag">${SOURCE_LABEL[f.source]}</span></div>
         </div>
@@ -659,14 +660,26 @@ window.addEventListener('resize', syncViewportHeight);
 syncViewportHeight();
 
 function openModal(id) {
-  document.getElementById(id).classList.remove('hidden');
+  const modal = document.getElementById(id);
+  // A sheet opened from another sheet has to sit above it, whatever their order
+  // in the document - otherwise the one underneath swallows the taps.
+  const alreadyOpen = document.querySelectorAll('.modal:not(.hidden)').length;
+  modal.style.zIndex = String(20 + alreadyOpen);
+  modal.classList.remove('hidden');
   syncBodyScrollLock();
 }
 function closeModal(id) {
   const modal = document.getElementById(id);
   modal.classList.add('hidden');
   modal.classList.remove('searching');
+  modal.style.zIndex = '';
   syncBodyScrollLock();
+}
+
+// Once something is logged, every sheet that led there is done - leaving one
+// open would show figures that the new entry has already changed.
+function closeAllModals() {
+  document.querySelectorAll('.modal:not(.hidden)').forEach(m => closeModal(m.id));
 }
 
 function openAddEntryModal(meal) {
@@ -707,7 +720,7 @@ function renderAddEntryFoodList(query) {
   container.innerHTML = results.map((f, i) => `
     <div class="food-row pick-row" data-idx="${i}">
       <button type="button" class="entry-info entry-open pick-open" data-idx="${i}">
-        <div class="entry-name">${escapeHtml(f.name)}</div>
+        <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(f.name)}</div>
         <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}
           <span class="source-tag">${SOURCE_LABEL[f.source] || ''}</span></div>
       </button>
@@ -1035,6 +1048,80 @@ function openConfirmFood(food, note) {
   openModal('confirm-food-modal');
 }
 
+// ---- Eating-out suggestions ----
+// Picks restaurant meals that fit the calories still left today. The order is
+// seeded by the date, so a day's shortlist is stable while you look at it but
+// is different tomorrow.
+function seededShuffle(items, seed) {
+  const out = [...items];
+  let s = seed;
+  const rand = () => {
+    s = (s * 1664525 + 1013904223) % 4294967296;
+    return s / 4294967296;
+  };
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function dateSeed(dateStr) {
+  return [...dateStr].reduce((a, c) => a + c.charCodeAt(0) * 31, 7);
+}
+
+function suggestMeals(remaining, proteinLeft) {
+  const pool = FOOD_DB.filter(f => f.restaurant);
+  // Anything at or under the remaining budget is fair game; below a quarter of
+  // it is a snack rather than a meal, so it is not offered as one.
+  const fits = pool.filter(f => f.calories <= remaining && f.calories >= remaining * 0.25);
+  const shuffled = seededShuffle(fits, dateSeed(state.currentDate));
+  // Within the day's shuffle, lead with the options that give the most protein
+  // for their calories - the ones that leave the day in the best shape.
+  return shuffled
+    .map((f, i) => ({ food: f, order: i, density: f.protein / Math.max(f.calories, 1) }))
+    .sort((a, b) => (b.density - a.density) || (a.order - b.order))
+    .slice(0, 12)
+    .map(x => x.food);
+}
+
+function renderSuggestions() {
+  const goals = computeGoals(state.settings);
+  const eaten = sumDay(state.diaryDay);
+  const exercise = state.exerciseDay.reduce((s, e) => s + e.calories, 0);
+  const remaining = goals.goalCalories - eaten.calories + exercise;
+  const proteinLeft = Math.max(goals.macros.proteinG - eaten.protein, 0);
+
+  const headline = document.getElementById('suggest-headline');
+  const list = document.getElementById('suggest-list');
+
+  if (remaining <= 0) {
+    headline.textContent = `No calories left today — you are ${Math.abs(remaining)} over.`;
+    list.innerHTML = `<div class="empty-hint">Nothing to suggest for today. Tomorrow's budget starts fresh.</div>`;
+    return;
+  }
+
+  const picks = suggestMeals(remaining, proteinLeft);
+  headline.textContent = `${remaining.toLocaleString()} cal left${proteinLeft ? ` · ${proteinLeft}g protein to go` : ''}`;
+
+  if (!picks.length) {
+    list.innerHTML = `<div class="empty-hint">Only ${remaining} cal left — too little for a meal out.
+      A coffee or a light snack from Search would fit better.</div>`;
+    return;
+  }
+
+  state.suggestRows = picks;
+  list.innerHTML = picks.map((f, i) => `
+    <div class="food-row pick-row">
+      <button type="button" class="entry-info entry-open suggest-open" data-idx="${i}">
+        <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(f.name)}</div>
+        <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}
+          ${f.brand ? `<span class="source-tag">${escapeHtml(f.brand)}</span>` : ''}</div>
+      </button>
+      <div class="qty-picker"><span class="left-after">${(remaining - f.calories).toLocaleString()} left</span></div>
+    </div>`).join('');
+}
+
 // ---- Recipes ----
 function recipeTotals(recipe) {
   const totals = recipe.ingredients.reduce((acc, i) => ({
@@ -1063,7 +1150,7 @@ function renderRecipes() {
       return `
         <div class="food-row" data-recipe-id="${r.id}">
           <div class="entry-info">
-            <div class="entry-name">${escapeHtml(r.name)}</div>
+            <div class="entry-name">🍲 ${escapeHtml(r.name)}</div>
             <div class="entry-sub">${r.ingredients.length} ingredient${r.ingredients.length === 1 ? '' : 's'} ·
               makes ${r.servings} · ${perServing.calories} cal/serving ·
               P${perServing.protein} C${perServing.carbs} F${perServing.fat}</div>
@@ -1099,7 +1186,7 @@ function renderRecipeDraft() {
     ? draft.ingredients.map((i, idx) => `
       <div class="entry-row">
         <div class="entry-info">
-          <div class="entry-name">${escapeHtml(i.name)}</div>
+          <div class="entry-name">${foodEmoji(i.name)} ${escapeHtml(i.name)}</div>
           <div class="entry-sub">${i.qty !== 1 ? `${i.qty}× · ` : ''}${Math.round(i.calories * i.qty)} cal</div>
         </div>
         <button type="button" class="icon-btn small remove-ingredient-btn" data-idx="${idx}" title="Remove">✕</button>
@@ -1120,7 +1207,7 @@ function renderRecipeIngredientPicker(query) {
     ? results.map((f, i) => `
       <div class="food-row pick-row">
         <div class="entry-info">
-          <div class="entry-name">${escapeHtml(f.name)}</div>
+          <div class="entry-name">${foodEmoji(f.name)} ${escapeHtml(f.name)}</div>
           <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal</div>
         </div>
         <div class="qty-picker">
@@ -1332,6 +1419,20 @@ function wireEvents() {
     });
   });
 
+  // Eating-out suggestions
+  document.getElementById('suggest-btn').addEventListener('click', () => {
+    renderSuggestions();
+    openModal('suggest-modal');
+  });
+  document.getElementById('suggest-list').addEventListener('click', e => {
+    const btn = e.target.closest('.suggest-open');
+    if (!btn) return;
+    const food = state.suggestRows[Number(btn.dataset.idx)];
+    if (!food) return;
+    state.pendingMeal = null; // suggestions are not tied to a particular meal
+    openLogFoodModal(food);
+  });
+
   // Barcode scanning
   document.getElementById('scan-btn').addEventListener('click', async () => {
     document.getElementById('manual-barcode').value = '';
@@ -1417,8 +1518,7 @@ function wireEvents() {
       await db.addFood(food);
       state.foods = await db.getFoods();
     }
-    closeModal('confirm-food-modal');
-    closeModal('add-entry-modal');
+    closeAllModals();
     await loadDayData();
     render();
   });
@@ -1554,9 +1654,7 @@ function wireEvents() {
       await db.addFood(food);
       state.foods = await db.getFoods();
     }
-    closeModal('log-food-modal');
-    // Also dismisses the search sheet when the editor was opened from it.
-    closeModal('add-entry-modal');
+    closeAllModals();
     await loadDayData();
     render();
   });

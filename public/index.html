@@ -101,6 +101,10 @@
           <div id="meal-snacks-list" class="list"></div>
         </div>
 
+        <button type="button" id="suggest-btn" class="secondary-btn full suggest-cta">
+          🍽️ What can I eat out today?
+        </button>
+
         <div class="meal-section">
           <div class="meal-head">
             <h3>Exercise</h3>
@@ -374,6 +378,20 @@
       </label>
       <button type="submit" class="primary-btn full">Add to Diary</button>
     </form>
+  </div>
+</div>
+
+<!-- Eating-out suggestions for what is left today -->
+<div id="suggest-modal" class="modal hidden" data-close-modal="suggest-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3>Eating out today</h3>
+      <button class="icon-btn" data-close-modal="suggest-modal">✕</button>
+    </div>
+    <div id="suggest-headline" class="suggest-headline"></div>
+    <p class="modal-hint">Meals that fit what's left, highest protein first. Tap one to set the
+      portion and log it. Chain figures are published values and vary by branch — treat them as close, not exact.</p>
+    <div id="suggest-list" class="list scroll-list"></div>
   </div>
 </div>
 

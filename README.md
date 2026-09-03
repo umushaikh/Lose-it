@@ -19,13 +19,21 @@ there's no account, no server-side database, and no data leaves your phone.
 - **Food diary** — log meals (breakfast/lunch/dinner/snacks) for any day,
   see calories and macros remaining against your budget, and log exercise
   to add calories back.
-- **Food search** — a built-in database of 300+ common whole foods, staples,
-  South Asian, Middle Eastern and Asian dishes, and restaurant items (values
-  from USDA FoodData Central plus published chain figures), plus a "Search
-  branded foods" lookup against
-  [Open Food Facts](https://world.openfoodfacts.org) for packaged and
-  branded products. Anything you log from either is saved to My Foods so
+- **Food search** — a built-in database of 400+ foods with an icon on each:
+  common whole foods and staples, Emirati and Gulf cooking (machboos, harees,
+  thereed, luqaimat, karak, camel meat), Levantine and Arabic dishes
+  (shawarma, manakish, fattoush, knafeh), South, East and Southeast Asian,
+  Mexican, and chains found in the UAE. Values come from USDA FoodData
+  Central plus published chain figures. There's also a "Search branded foods"
+  lookup against [Open Food Facts](https://world.openfoodfacts.org) for
+  packaged products. Anything you log from either is saved to My Foods so
   it's one tap away next time.
+- **Eating out today** — from the Today tab, get a shortlist of restaurant
+  and fast-food meals that fit the calories you have left, highest protein
+  first, so a meal out doesn't blow the day. The shortlist is seeded by the
+  date, so it holds still while you read it and is different tomorrow. Tap
+  one to set the portion and log it. Chain figures are published values and
+  vary by branch and country — close, not exact.
 - **Barcode scanning** — point the camera at a packaged product's barcode and
   it's looked up in Open Food Facts. Uses the browser's native barcode
   detector where available (Chrome/Android) and falls back to ZXing

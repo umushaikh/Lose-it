@@ -404,6 +404,15 @@ body.modal-open { overflow: hidden; }
 #search-online-btn { flex-shrink: 0; padding: 9px 12px; font-size: 13px; margin-top: 8px; }
 
 .totals-readout { color: var(--accent); font-weight: 700; }
+
+.suggest-cta { margin: 4px 0 12px; font-size: 15px; padding: 13px; }
+.suggest-headline {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.left-after { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .modal-head h3 { margin: 0; font-size: 17px; }
 .modal-hint { font-size: 13px; color: var(--text-dim); margin: 0 0 12px; }
