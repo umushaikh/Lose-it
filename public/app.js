@@ -702,13 +702,15 @@ function renderAddEntryFoodList(query) {
     container.innerHTML = `<div class="empty-hint">No matches. Try “Search branded foods” below, or Quick Add.</div>`;
     return;
   }
+  // Tapping the food opens the editor (serving, grams, macros); the Add button
+  // stays for logging one serving without a detour.
   container.innerHTML = results.map((f, i) => `
     <div class="food-row pick-row" data-idx="${i}">
-      <div class="entry-info">
+      <button type="button" class="entry-info entry-open pick-open" data-idx="${i}">
         <div class="entry-name">${escapeHtml(f.name)}</div>
         <div class="entry-sub">${escapeHtml(f.servingDesc)} · ${f.calories} cal · P${f.protein} C${f.carbs} F${f.fat}
           <span class="source-tag">${SOURCE_LABEL[f.source] || ''}</span></div>
-      </div>
+      </button>
       <div class="qty-picker">
         <input type="number" class="qty-input" min="0" step="any" value="1" data-idx="${i}" />
         <button class="primary-btn small add-picked-food-btn" data-idx="${i}">Add</button>
@@ -1160,7 +1162,8 @@ function openLogFoodModal(food) {
   document.getElementById('log-food-title').textContent = `Log ${food.name}`;
   document.getElementById('log-food-qty').value = 1;
   refreshAmountTotals('log-food');
-  document.getElementById('log-food-meal').value = 'breakfast';
+  // Defaults to the meal whose + was tapped, when it was opened that way.
+  document.getElementById('log-food-meal').value = state.pendingMeal || 'breakfast';
   openModal('log-food-modal');
 }
 
@@ -1275,6 +1278,12 @@ function wireEvents() {
     renderAddEntryFoodList(query);
   });
   document.getElementById('add-entry-food-list').addEventListener('click', async e => {
+    const openBtn = e.target.closest('.pick-open');
+    if (openBtn) {
+      const food = state.visibleResults[Number(openBtn.dataset.idx)];
+      if (food) openLogFoodModal(food);
+      return;
+    }
     const addBtn = e.target.closest('.add-picked-food-btn');
     if (!addBtn) return;
     const food = state.visibleResults[Number(addBtn.dataset.idx)];
@@ -1546,6 +1555,8 @@ function wireEvents() {
       state.foods = await db.getFoods();
     }
     closeModal('log-food-modal');
+    // Also dismisses the search sheet when the editor was opened from it.
+    closeModal('add-entry-modal');
     await loadDayData();
     render();
   });
