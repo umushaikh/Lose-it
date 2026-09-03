@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Calorie Counter</title>
 <link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#15803d" />
+<meta name="theme-color" content="#000000" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="icon" href="icons/icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Calories" />
@@ -36,11 +37,13 @@
 
         <div class="budget-card">
           <div class="budget-ring-wrap">
-            <div id="budget-ring" class="budget-ring" style="--pct:0">
-              <div class="budget-ring-inner">
-                <div id="budget-remaining" class="budget-remaining">0</div>
-                <div class="budget-remaining-label">remaining</div>
-              </div>
+            <svg class="gauge" viewBox="0 0 200 200" aria-hidden="true">
+              <circle class="gauge-track" cx="100" cy="100" r="80" stroke-dasharray="377 503"></circle>
+              <circle id="gauge-fill" class="gauge-fill" cx="100" cy="100" r="80" stroke-dasharray="0 503"></circle>
+            </svg>
+            <div class="budget-ring-inner">
+              <div id="budget-remaining" class="budget-remaining">0</div>
+              <div class="budget-remaining-label">remaining</div>
             </div>
           </div>
           <div class="budget-stats">
@@ -67,7 +70,7 @@
 
         <div id="meal-breakfast" class="meal-section">
           <div class="meal-head">
-            <h3>Breakfast</h3>
+            <div><h3>Breakfast</h3><div id="meal-breakfast-suggested" class="meal-suggested"></div></div>
             <div class="meal-head-right"><span id="meal-breakfast-total" class="meal-total">0 cal</span>
               <button class="icon-btn add-meal-btn" data-meal="breakfast" title="Add food">+</button></div>
           </div>
@@ -76,7 +79,7 @@
 
         <div id="meal-lunch" class="meal-section">
           <div class="meal-head">
-            <h3>Lunch</h3>
+            <div><h3>Lunch</h3><div id="meal-lunch-suggested" class="meal-suggested"></div></div>
             <div class="meal-head-right"><span id="meal-lunch-total" class="meal-total">0 cal</span>
               <button class="icon-btn add-meal-btn" data-meal="lunch" title="Add food">+</button></div>
           </div>
@@ -85,7 +88,7 @@
 
         <div id="meal-dinner" class="meal-section">
           <div class="meal-head">
-            <h3>Dinner</h3>
+            <div><h3>Dinner</h3><div id="meal-dinner-suggested" class="meal-suggested"></div></div>
             <div class="meal-head-right"><span id="meal-dinner-total" class="meal-total">0 cal</span>
               <button class="icon-btn add-meal-btn" data-meal="dinner" title="Add food">+</button></div>
           </div>
@@ -94,7 +97,7 @@
 
         <div id="meal-snacks" class="meal-section">
           <div class="meal-head">
-            <h3>Snacks</h3>
+            <div><h3>Snacks</h3><div id="meal-snacks-suggested" class="meal-suggested"></div></div>
             <div class="meal-head-right"><span id="meal-snacks-total" class="meal-total">0 cal</span>
               <button class="icon-btn add-meal-btn" data-meal="snacks" title="Add food">+</button></div>
           </div>
@@ -215,6 +218,14 @@
 
         <label id="rate-row" class="field">Rate
           <select name="rate"></select>
+        </label>
+
+        <label class="field">Appearance
+          <select name="theme">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="system">Match my phone</option>
+          </select>
         </label>
 
         <label class="field">Custom daily calories (optional)

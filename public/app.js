@@ -3,12 +3,31 @@
 // against what was last deployed.
 const BUILD_ID = '__BUILD_ID__';
 
+// `share` is the slice of the day's budget suggested for each meal, the same
+// rough split Lose It shows (20/25/35/20).
 const MEALS = [
-  { key: 'breakfast', label: 'Breakfast' },
-  { key: 'lunch', label: 'Lunch' },
-  { key: 'dinner', label: 'Dinner' },
-  { key: 'snacks', label: 'Snacks' }
+  { key: 'breakfast', label: 'Breakfast', share: 0.20 },
+  { key: 'lunch', label: 'Lunch', share: 0.25 },
+  { key: 'dinner', label: 'Dinner', share: 0.35 },
+  { key: 'snacks', label: 'Snacks', share: 0.20 }
 ];
+
+// Visible length of the budget gauge's arc: 270° of a circle with r=80.
+const GAUGE_ARC = 2 * Math.PI * 80 * 0.75;
+
+// Applies the chosen theme to the document and keeps the browser chrome
+// (status bar tint on an installed PWA) in step with it.
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'dark' || theme === 'light') {
+    root.setAttribute('data-theme', theme);
+  } else {
+    root.removeAttribute('data-theme');
+  }
+  const dark = theme === 'dark'
+    || (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#000000' : '#f4f5f7');
+}
 
 // Multipliers and wording match calculator.net's TDEE calculator, which uses a
 // six-level scale — note its "Moderate" is 1.465, not the 1.55 of the older
@@ -208,6 +227,7 @@ async function refreshAll() {
 
 // ---- Rendering ----
 function render() {
+  applyTheme(state.settings.theme || 'dark');
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${state.activeTab}`));
   document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === state.activeTab));
 
@@ -255,8 +275,13 @@ function renderToday() {
   document.getElementById('budget-remaining').textContent = remaining.toLocaleString();
   document.getElementById('budget-remaining').classList.toggle('negative', remaining < 0);
 
-  const pct = goals.goalCalories > 0 ? Math.min(100, Math.round((eaten.calories / goals.goalCalories) * 100)) : 0;
-  document.getElementById('budget-ring').style.setProperty('--pct', pct);
+  // The gauge is a 270° arc of a circle with r=80, so its full sweep is
+  // 0.75 × 2πr ≈ 377 units of stroke; the dash pattern draws that fraction.
+  const budget = goals.goalCalories + exerciseCal;
+  const pct = budget > 0 ? Math.min(1, eaten.calories / budget) : 0;
+  const gauge = document.getElementById('gauge-fill');
+  gauge.setAttribute('stroke-dasharray', `${(pct * GAUGE_ARC).toFixed(1)} 503`);
+  gauge.classList.toggle('over', remaining < 0);
 
   renderMacroBar('protein', eaten.protein, goals.macros.proteinG);
   renderMacroBar('carbs', eaten.carbs, goals.macros.carbsG);
@@ -267,6 +292,9 @@ function renderToday() {
     const total = Math.round(items.reduce((s, i) => s + i.calories * i.qty, 0));
     const list = document.getElementById(`meal-${m.key}-list`);
     document.getElementById(`meal-${m.key}-total`).textContent = `${total.toLocaleString()} cal`;
+    const suggested = Math.round((goals.goalCalories + exerciseCal) * m.share);
+    document.getElementById(`meal-${m.key}-suggested`).textContent =
+      suggested > 0 ? `${suggested.toLocaleString()} calories suggested` : '';
     list.innerHTML = items.length
       ? items.map(i => {
         const t = scaleNutrition(i, i.qty);
@@ -360,7 +388,11 @@ function renderWeight() {
     document.getElementById('weight-change').textContent = 'Log a couple of entries to see your trend';
   }
 
-  document.getElementById('weight-chart').innerHTML = buildWeightChart(log, units);
+  const chart = document.getElementById('weight-chart');
+  chart.innerHTML = buildWeightChart(log, units);
+  // Nothing to draw with fewer than two weigh-ins — hide the box rather than
+  // leaving an empty card sitting on the page.
+  chart.classList.toggle('hidden', log.length < 2);
 
   const list = document.getElementById('weight-list');
   list.innerHTML = log.length
@@ -409,6 +441,7 @@ function populateSettingsForm() {
   form.carbsPct.value = s.macroSplit.carbsPct;
   form.fatPct.value = s.macroSplit.fatPct;
   form.calorieOverride.value = s.calorieOverride != null ? s.calorieOverride : '';
+  form.theme.value = s.theme || 'dark';
   form.apiKey.value = s.apiKey || '';
 
   if (s.units === 'metric') {
@@ -522,6 +555,7 @@ function readSettingsFromForm() {
       fatPct: Number(form.fatPct.value) || 0
     },
     calorieOverride: form.calorieOverride.value ? Number(form.calorieOverride.value) : null,
+    theme: form.theme.value,
     apiKey: form.apiKey.value.trim()
   };
 }
@@ -1821,6 +1855,7 @@ function wireEvents() {
   // Settings / TDEE calculator
   const settingsForm = document.getElementById('settings-form');
   settingsForm.addEventListener('input', () => updateSettingsPreview());
+  settingsForm.theme.addEventListener('change', e => applyTheme(e.target.value));
   settingsForm.units.addEventListener('change', e => convertAndSwitchUnits(e.target.value));
   settingsForm.addEventListener('submit', async e => {
     e.preventDefault();
@@ -1875,6 +1910,14 @@ function wireEvents() {
 }
 
 (async function init() {
+  // Set the theme before the first render so a light-mode user doesn't get a
+  // flash of the dark default while the rest of the state loads.
+  applyTheme((await db.getSettings()).theme || 'dark');
+  // Keep the browser-chrome tint right if the phone flips light/dark while the
+  // app is open and the user is on "Match my phone".
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    applyTheme(state.settings.theme || 'dark');
+  });
   wireEvents();
   await refreshAll();
 })();

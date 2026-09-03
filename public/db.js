@@ -18,6 +18,7 @@ function defaultSettings() {
     rateLbPerWeek: 1,
     macroSplit: { proteinPct: 30, carbsPct: 40, fatPct: 30 },
     calorieOverride: null, // if set, overrides the computed budget
+    theme: 'dark', // 'dark' | 'light' | 'system'
     apiKey: '' // optional Anthropic key for photo estimates; stays on this device
   };
 }

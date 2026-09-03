@@ -55,6 +55,10 @@ there's no account, no server-side database, and no data leaves your phone.
 - **Weight tracking** — log weigh-ins, see your trend chart and progress
   toward a goal weight.
 - **Backup & restore** — export/import your data as a JSON file.
+- **Dark by default** — an OLED-black theme with rounded cards, an open-bottom
+  calorie gauge that turns red once you're over, and per-meal calorie
+  suggestions (20% breakfast / 25% lunch / 35% dinner / 20% snacks). Under
+  Goals → Appearance you can switch to Light or have it follow your phone.
 
 ## Running it
 
