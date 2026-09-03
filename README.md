@@ -100,7 +100,12 @@ It then runs full-screen like a native app and works offline.
 ## Sharing it with friends
 
 The app is useful on its own with no server at all, and that stays the default.
-If you want a shared board, one person deploys the included Worker once:
+If you want a shared board, one person deploys the included Worker once — to
+their own free Cloudflare account.
+
+No terminal needed: add two Cloudflare secrets to this repo and run the
+**Deploy group server** action from github.com, which works fine from a phone.
+`api/README.md` has the steps. From a terminal it is instead:
 
 ```
 npm run api:setup     # creates the D1 database on your Cloudflare account

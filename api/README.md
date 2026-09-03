@@ -7,7 +7,30 @@ calories eaten against budget, macros, and how many items were logged.
 
 ## Deploying it
 
-You need a free Cloudflare account. From the repository root:
+You need a free Cloudflare account. There are two ways in.
+
+### From a phone (or any browser) — no terminal
+
+Use the **Deploy group server** GitHub Action. It creates the database, applies
+the schema and publishes the Worker on a GitHub runner, then prints the address
+to paste into the app. Setup is two secrets, added once:
+
+1. Cloudflare dashboard → profile menu → **My Profile → API Tokens → Create
+   Token → Create Custom Token**. Give it:
+   - Account · **Workers Scripts** · Edit
+   - Account · **D1** · Edit
+   - Account · **Workers R2 Storage** · Edit — only if you want photos
+2. Copy your **Account ID**: it is the hex string in the dashboard URL,
+   `dash.cloudflare.com/<account-id>/...`
+3. In this repo: **Settings → Secrets and variables → Actions → New repository
+   secret**, twice — `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+4. **Actions → Deploy group server → Run workflow.** Tick the photos box if you
+   want them.
+
+The run summary shows the URL. Re-running is safe: it reuses the database it
+already made and the schema is written with `IF NOT EXISTS`.
+
+### From a terminal
 
 ```
 npm run api:setup     # creates the D1 database and applies the schema
