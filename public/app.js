@@ -680,7 +680,7 @@ function openModal(id) {
 function closeModal(id) {
   const modal = document.getElementById(id);
   modal.classList.add('hidden');
-  modal.classList.remove('searching');
+  modal.classList.remove('searching', 'has-query');
   modal.style.zIndex = '';
   syncBodyScrollLock();
 }
@@ -982,7 +982,8 @@ function refreshAmountTotals(prefix) {
   return totals;
 }
 
-// Keeps the grams box and the servings box describing the same amount.
+// Keeps the grams box and the servings box describing the same amount, and
+// keeps the reference nutrition honest when the serving itself is redefined.
 function wireGramsAndServings(prefix) {
   const qtyInput = document.getElementById(`${prefix}-qty`);
   const gramsInput = document.getElementById(`${prefix}-grams`);
@@ -1013,14 +1014,39 @@ function wireGramsAndServings(prefix) {
   ['calories', 'protein', 'carbs', 'fat'].forEach(name => {
     form[name].addEventListener('input', () => refreshAmountTotals(prefix));
   });
+
+  // Editing "100 g" into "150 g" redefines what one serving is, so the
+  // reference nutrition has to move with it - otherwise 150 g of chicken
+  // breast keeps reporting the calories of 100 g.
   form.servingDesc.addEventListener('input', () => {
-    if (gramsRow) gramsRow.classList.toggle('hidden', !basis());
+    const previous = Number(form.dataset.gramBasis) || null;
+    const current = basis();
+    if (previous && current && current !== previous) {
+      const factor = current / previous;
+      ['calories', 'protein', 'carbs', 'fat'].forEach(name => {
+        const value = Number(form[name].value) || 0;
+        form[name].value = name === 'calories'
+          ? Math.round(value * factor)
+          : Math.round(value * factor * 10) / 10;
+      });
+    }
+    form.dataset.gramBasis = current || '';
+    if (gramsRow) gramsRow.classList.toggle('hidden', !current);
     syncFromQty();
   });
+}
 
-  return { syncFromQty, showGrams: () => {
-    if (gramsRow) gramsRow.classList.toggle('hidden', !basis());
-  } };
+// Called whenever an editor is opened, so the reference label and the stored
+// gram basis match the food being edited.
+function primeAmountEditor(prefix, servingDesc) {
+  const form = document.getElementById(`${prefix}-form`);
+  const grams = parseServingGrams(servingDesc);
+  form.dataset.gramBasis = grams || '';
+  document.getElementById(`${prefix}-grams-row`).classList.toggle('hidden', !grams);
+  if (grams) document.getElementById(`${prefix}-grams`).value = grams;
+  // Naming the basis makes clear these are reference values, not the total.
+  document.getElementById(`${prefix}-per-label`).textContent =
+    `Nutrition per ${servingDesc || '1 serving'}`;
 }
 
 function openEntryEditor(meal, entry) {
@@ -1035,8 +1061,8 @@ function openEntryEditor(meal, entry) {
   document.getElementById('edit-entry-qty').value = entry.qty;
   document.getElementById('edit-entry-meal').value = meal;
 
+  primeAmountEditor('edit-entry', form.servingDesc.value);
   const grams = parseServingGrams(entry.servingDesc);
-  document.getElementById('edit-entry-grams-row').classList.toggle('hidden', !grams);
   if (grams) document.getElementById('edit-entry-grams').value = Math.round(entry.qty * grams * 10) / 10;
   refreshAmountTotals('edit-entry');
   openModal('edit-entry-modal');
@@ -1055,9 +1081,7 @@ function openConfirmFood(food, note) {
   form.fat.value = food.fat;
   form.servingDesc.value = food.servingDesc;
   document.getElementById('confirm-food-qty').value = 1;
-  const grams = parseServingGrams(food.servingDesc);
-  document.getElementById('confirm-food-grams-row').classList.toggle('hidden', !grams);
-  if (grams) document.getElementById('confirm-food-grams').value = grams;
+  primeAmountEditor('confirm-food', form.servingDesc.value);
   document.getElementById('confirm-food-meal').value = state.pendingMeal || 'breakfast';
   refreshAmountTotals('confirm-food');
   openModal('confirm-food-modal');
@@ -1300,9 +1324,7 @@ function openLogFoodModal(food) {
   form.protein.value = food.protein;
   form.carbs.value = food.carbs;
   form.fat.value = food.fat;
-  const grams = parseServingGrams(food.servingDesc);
-  document.getElementById('log-food-grams-row').classList.toggle('hidden', !grams);
-  if (grams) document.getElementById('log-food-grams').value = grams;
+  primeAmountEditor('log-food', form.servingDesc.value);
   document.getElementById('log-food-title').textContent = `Log ${food.name}`;
   document.getElementById('log-food-qty').value = 1;
   refreshAmountTotals('log-food');
@@ -1389,6 +1411,7 @@ function wireEvents() {
   document.getElementById('add-entry-search').addEventListener('input', e => {
     // Online hits belong to the query that fetched them.
     state.searchResults = [];
+    document.getElementById('add-entry-modal').classList.toggle('has-query', !!e.target.value.trim());
     renderAddEntryFoodList(e.target.value);
   });
 

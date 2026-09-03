@@ -352,13 +352,14 @@
     <form id="log-food-form">
       <label class="field">Serving<input name="servingDesc" type="text" placeholder="e.g. 100 g, 1 cup" /></label>
 
-      <div class="field-label-row">Amount <span id="log-food-totals" class="totals-readout"></span></div>
+      <div class="field-label-row">How much did you have?</div>
       <div class="field-row">
         <label class="field">Servings<input id="log-food-qty" type="number" step="any" min="0" value="1" /></label>
         <label class="field hidden" id="log-food-grams-row">Grams<input id="log-food-grams" type="number" step="any" min="0" /></label>
       </div>
 
-      <div class="field-label-row">Per serving</div>
+      <div class="total-banner"><span>Total logged</span><strong id="log-food-totals">—</strong></div>
+      <div class="field-label-row" id="log-food-per-label">Nutrition per serving</div>
       <div class="field-row">
         <label class="field">Calories<input name="calories" type="number" step="any" min="0" required /></label>
         <label class="field">Protein<input name="protein" type="number" step="any" min="0" /></label>
@@ -408,13 +409,14 @@
       <label class="field">Name<input name="name" type="text" required /></label>
       <label class="field">Serving<input name="servingDesc" type="text" placeholder="e.g. 100 g, 1 cup" /></label>
 
-      <div class="field-label-row">Amount <span id="edit-entry-totals" class="totals-readout"></span></div>
+      <div class="field-label-row">How much did you have?</div>
       <div class="field-row">
         <label class="field">Servings<input id="edit-entry-qty" type="number" step="any" min="0" /></label>
         <label class="field hidden" id="edit-entry-grams-row">Grams<input id="edit-entry-grams" type="number" step="any" min="0" /></label>
       </div>
 
-      <div class="field-label-row">Per serving</div>
+      <div class="total-banner"><span>Total logged</span><strong id="edit-entry-totals">—</strong></div>
+      <div class="field-label-row" id="edit-entry-per-label">Nutrition per serving</div>
       <div class="field-row">
         <label class="field">Calories<input name="calories" type="number" step="any" min="0" required /></label>
         <label class="field">Protein<input name="protein" type="number" step="any" min="0" /></label>
@@ -495,13 +497,14 @@
     <form id="confirm-food-form">
       <label class="field">Serving<input name="servingDesc" type="text" placeholder="e.g. 100 g, 1 plate" /></label>
 
-      <div class="field-label-row">Amount <span id="confirm-food-totals" class="totals-readout"></span></div>
+      <div class="field-label-row">How much did you have?</div>
       <div class="field-row">
         <label class="field">Servings<input id="confirm-food-qty" type="number" step="any" min="0" value="1" /></label>
         <label class="field hidden" id="confirm-food-grams-row">Grams<input id="confirm-food-grams" type="number" step="any" min="0" /></label>
       </div>
 
-      <div class="field-label-row">Per serving</div>
+      <div class="total-banner"><span>Total logged</span><strong id="confirm-food-totals">—</strong></div>
+      <div class="field-label-row" id="confirm-food-per-label">Nutrition per serving</div>
       <div class="field-row">
         <label class="field">Calories<input name="calories" type="number" step="any" min="0" required /></label>
         <label class="field">Protein<input name="protein" type="number" step="any" min="0" /></label>
