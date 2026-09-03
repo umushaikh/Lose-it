@@ -1,9 +1,12 @@
 # Group board API
 
-A Cloudflare Worker plus a D1 database. It holds one row per person per day and
-a short feed of things worth looking at. It does not hold anyone's food diary —
-that stays on each phone, as it always has. What gets shared is a summary:
-calories eaten against budget, macros, and how many items were logged.
+A Cloudflare Worker plus a D1 database. It holds one row per person per day
+(a summary — calories eaten against budget, macros, how many items were
+logged — plus the actual foods behind it, item by item, for that member's
+profile) and a short feed of things worth looking at. Both the summary and
+the item list are overwritten in place as someone logs, not appended to, so
+the database stays one row per person per day regardless of how often they
+log.
 
 ## Deploying it
 
@@ -116,5 +119,6 @@ random token that authenticates them from then on.
 That is a deliberate trade for a group of friends — nobody has to make an
 account — but be clear-eyed about it: the join code is the only thing standing
 between your group and whoever it gets forwarded to. Share it the way you would
-share a house key, and do not put anything in the feed you would mind a
-friend-of-a-friend seeing.
+share a house key. Since every member's profile shows what they've actually
+logged today, not just a summary, that trade now covers your food diary too —
+do not put anyone in a group you would mind seeing what you ate.

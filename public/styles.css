@@ -748,6 +748,8 @@ body.modal-open { overflow: hidden; }
   gap: 10px;
   margin-bottom: 8px;
 }
+.friend-row { cursor: pointer; }
+.friend-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .friend-name { font-weight: 600; min-width: 0; }
 .friend-you {
   font-size: 11px;
@@ -760,6 +762,29 @@ body.modal-open { overflow: hidden; }
 }
 .friend-status { font-size: 13px; font-weight: 600; color: var(--accent); white-space: nowrap; }
 .friend-status.over { color: var(--danger); }
+
+.avatar-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.avatar-circle.small { width: 26px; height: 26px; font-size: 11px; }
+.avatar-circle.large { width: 56px; height: 56px; font-size: 26px; }
+.avatar-circle.avatar-emoji { background: var(--accent-soft); font-size: 1.3em; }
+.avatar-circle.large.avatar-emoji { font-size: 30px; }
+
+.profile-head { display: flex; align-items: center; gap: 14px; margin: 4px 0 16px; }
+.profile-info { margin: 0; font-size: 13.5px; color: var(--text-dim); flex: 1; min-width: 0; }
+.profile-info.placeholder { font-style: italic; opacity: 0.7; }
+.profile-meals-title { margin: 4px 0 8px; font-size: 15px; font-weight: 700; }
+.profile-meal { margin-bottom: 14px; }
+.profile-meal-head { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 4px; }
+.profile-meal-head span { color: var(--accent); font-weight: 700; }
 
 .friend-track {
   height: 8px;

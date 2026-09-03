@@ -96,6 +96,44 @@ function parseItemsJson(raw) {
   }
 }
 
+const DAY_MEAL_KEYS = ['breakfast', 'lunch', 'dinner', 'snacks'];
+
+// Same shape of clean-up used for a shared meal's items, pulled out so a
+// whole day's worth of logged foods (day_items) can be sanitized the same
+// way without trusting anything the client sends.
+function sanitizeFoodItem(i) {
+  return {
+    name: String(i?.name || '').trim().slice(0, 120),
+    servingDesc: String(i?.servingDesc || '1 serving').slice(0, 60),
+    qty: Math.max(0, Math.min(1000, Number(i?.qty) || 1)),
+    calories: num(i?.calories),
+    protein: numDecimal(i?.protein, 2000),
+    carbs: numDecimal(i?.carbs, 2000),
+    fat: numDecimal(i?.fat, 2000),
+    fiber: numDecimal(i?.fiber, 500),
+    sugar: numDecimal(i?.sugar, 2000),
+    sodium: num(i?.sodium, 20000)
+  };
+}
+
+// Safe JSON.parse for day_items' items_json - malformed or missing just
+// means "nothing logged", never a broken profile.
+function parseDayItemsJson(raw) {
+  const out = { breakfast: [], lunch: [], dinner: [], snacks: [] };
+  if (!raw) return out;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      for (const key of DAY_MEAL_KEYS) {
+        if (Array.isArray(parsed[key])) out[key] = parsed[key];
+      }
+    }
+  } catch {
+    // fall through with the empty default
+  }
+  return out;
+}
+
 function num(value, max = 100000) {
   const n = Math.round(Number(value) || 0);
   if (!Number.isFinite(n)) return 0;
@@ -211,26 +249,59 @@ async function joinGroup(request, env, origin) {
 
 // Upsert today's numbers. Called after every diary change, so it must be cheap
 // and must never grow the table.
+//
+// Also upserts day_items alongside it, when the client sends items - the
+// actual foods behind those numbers, broken out by meal, so a member's
+// profile can show their whole day rather than just its totals. This runs on
+// the same debounced sync as the day summary, so it costs nothing extra:
+// logging all day still rewrites one row per table, not one per change.
 async function putDay(request, env, member, origin) {
   const body = await request.json().catch(() => ({}));
   if (!isDateStr(body.date)) return fail('A date of the form YYYY-MM-DD is required', 400, origin);
   const now = Date.now();
 
-  await env.DB.prepare(`
-    INSERT INTO days (group_id, member_id, date, eaten, budget, exercise, protein, carbs, fat, entries, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (group_id, member_id, date) DO UPDATE SET
-      eaten = excluded.eaten, budget = excluded.budget, exercise = excluded.exercise,
-      protein = excluded.protein, carbs = excluded.carbs, fat = excluded.fat,
-      entries = excluded.entries, updated_at = excluded.updated_at
-  `).bind(
-    member.group_id, member.id, body.date,
-    num(body.eaten), num(body.budget), num(body.exercise),
-    num(body.protein, 5000), num(body.carbs, 5000), num(body.fat, 5000),
-    num(body.entries, 500), now
-  ).run();
+  const writes = [
+    env.DB.prepare(`
+      INSERT INTO days (group_id, member_id, date, eaten, budget, exercise, protein, carbs, fat, entries, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT (group_id, member_id, date) DO UPDATE SET
+        eaten = excluded.eaten, budget = excluded.budget, exercise = excluded.exercise,
+        protein = excluded.protein, carbs = excluded.carbs, fat = excluded.fat,
+        entries = excluded.entries, updated_at = excluded.updated_at
+    `).bind(
+      member.group_id, member.id, body.date,
+      num(body.eaten), num(body.budget), num(body.exercise),
+      num(body.protein, 5000), num(body.carbs, 5000), num(body.fat, 5000),
+      num(body.entries, 500), now
+    ),
+    env.DB.prepare('UPDATE members SET last_seen = ? WHERE id = ?').bind(now, member.id)
+  ];
 
-  await env.DB.prepare('UPDATE members SET last_seen = ? WHERE id = ?').bind(now, member.id).run();
+  if (body.items && typeof body.items === 'object') {
+    const dayItems = {};
+    let total = 0;
+    for (const key of DAY_MEAL_KEYS) {
+      const rawItems = Array.isArray(body.items[key]) ? body.items[key] : [];
+      const items = rawItems.map(sanitizeFoodItem).filter(i => i.name).slice(0, 60);
+      total += items.length;
+      dayItems[key] = items;
+    }
+    // A generous ceiling well past any real day of logging - just a sanity
+    // cap so a malformed payload can't grow this row without bound.
+    if (total <= 120) {
+      const itemsJson = JSON.stringify(dayItems);
+      if (itemsJson.length <= 40000) {
+        writes.push(env.DB.prepare(`
+          INSERT INTO day_items (group_id, member_id, date, items_json, updated_at)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT (group_id, member_id, date) DO UPDATE SET
+            items_json = excluded.items_json, updated_at = excluded.updated_at
+        `).bind(member.group_id, member.id, body.date, itemsJson, now));
+      }
+    }
+  }
+
+  await env.DB.batch(writes);
   return json({ ok: true, updatedAt: now }, 200, origin);
 }
 
@@ -246,12 +317,15 @@ async function getBoard(request, env, member, origin) {
 
   const members = await env.DB.prepare(`
     SELECT m.id, m.name, m.last_seen,
-           d.eaten, d.budget, d.exercise, d.protein, d.carbs, d.fat, d.entries, d.updated_at
+           d.eaten, d.budget, d.exercise, d.protein, d.carbs, d.fat, d.entries, d.updated_at,
+           p.avatar, p.info, di.items_json AS day_items_json
     FROM members m
     LEFT JOIN days d ON d.member_id = m.id AND d.group_id = m.group_id AND d.date = ?
+    LEFT JOIN member_profiles p ON p.member_id = m.id
+    LEFT JOIN day_items di ON di.member_id = m.id AND di.group_id = m.group_id AND di.date = ?
     WHERE m.group_id = ?
     ORDER BY m.created_at
-  `).bind(date, member.group_id).all();
+  `).bind(date, date, member.group_id).all();
 
   const events = await env.DB.prepare(`
     SELECT e.id, e.member_id, e.kind, e.text, e.photo_key, e.calories, e.created_at, m.name AS member_name,
@@ -285,7 +359,10 @@ async function getBoard(request, env, member, origin) {
       carbs: r.carbs || 0,
       fat: r.fat || 0,
       entries: r.entries || 0,
-      updatedAt: r.updated_at || null
+      updatedAt: r.updated_at || null,
+      avatar: r.avatar || '',
+      info: r.info || '',
+      items: parseDayItemsJson(r.day_items_json)
     })),
     events: (events.results || []).map(r => ({
       id: r.id,
@@ -358,20 +435,7 @@ async function postEvent(request, env, member, origin) {
       return fail('Unknown meal', 400, origin);
     }
     const rawItems = Array.isArray(body.items) ? body.items.slice(0, 40) : [];
-    const items = rawItems
-      .map(i => ({
-        name: String(i?.name || '').trim().slice(0, 120),
-        servingDesc: String(i?.servingDesc || '1 serving').slice(0, 60),
-        qty: Math.max(0, Math.min(1000, Number(i?.qty) || 1)),
-        calories: num(i?.calories),
-        protein: numDecimal(i?.protein, 2000),
-        carbs: numDecimal(i?.carbs, 2000),
-        fat: numDecimal(i?.fat, 2000),
-        fiber: numDecimal(i?.fiber, 500),
-        sugar: numDecimal(i?.sugar, 2000),
-        sodium: num(i?.sodium, 20000)
-      }))
-      .filter(i => i.name);
+    const items = rawItems.map(sanitizeFoodItem).filter(i => i.name);
     if (!items.length) return fail('That meal has nothing logged in it to share', 400, origin);
 
     const itemsJson = JSON.stringify(items);
@@ -425,6 +489,24 @@ async function postEvent(request, env, member, origin) {
   return json({ ok: true }, 201, origin);
 }
 
+// A member can only ever write their own profile - there is no member id in
+// the body, it comes entirely from the authenticated caller.
+async function putProfile(request, env, member, origin) {
+  const body = await request.json().catch(() => ({}));
+  const avatar = String(body.avatar || '').trim().slice(0, 32);
+  const info = String(body.info || '').trim().slice(0, 140);
+  const now = Date.now();
+
+  await env.DB.prepare(`
+    INSERT INTO member_profiles (member_id, avatar, info, updated_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT (member_id) DO UPDATE SET
+      avatar = excluded.avatar, info = excluded.info, updated_at = excluded.updated_at
+  `).bind(member.id, avatar, info, now).run();
+
+  return json({ ok: true, avatar, info, updatedAt: now }, 200, origin);
+}
+
 async function uploadPhoto(request, env, member, origin) {
   if (!env.PHOTOS) return fail('Photo sharing is not enabled on this server', 501, origin);
   // A manual, instant off-switch: flip this in the Worker's dashboard
@@ -474,6 +556,8 @@ async function getPhoto(env, member, key, origin) {
 async function leaveGroup(env, member, origin) {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM days WHERE member_id = ?').bind(member.id),
+    env.DB.prepare('DELETE FROM day_items WHERE member_id = ?').bind(member.id),
+    env.DB.prepare('DELETE FROM member_profiles WHERE member_id = ?').bind(member.id),
     env.DB.prepare('DELETE FROM events WHERE member_id = ?').bind(member.id),
     env.DB.prepare('DELETE FROM members WHERE id = ?').bind(member.id)
   ]);
@@ -507,6 +591,7 @@ export default {
       if (path === '/api/day' && method === 'PUT') return await putDay(request, env, member, origin);
       if (path === '/api/board' && method === 'GET') return await getBoard(request, env, member, origin);
       if (path === '/api/events' && method === 'POST') return await postEvent(request, env, member, origin);
+      if (path === '/api/profile' && method === 'PUT') return await putProfile(request, env, member, origin);
       if (path === '/api/photos' && method === 'POST') return await uploadPhoto(request, env, member, origin);
       if (path.startsWith('/api/photos/') && method === 'GET') {
         return await getPhoto(env, member, decodeURIComponent(path.slice('/api/photos/'.length)), origin);

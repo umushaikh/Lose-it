@@ -6,9 +6,10 @@ your BMR/TDEE and calorie target from your stats and goal.
 
 Everything is stored in the browser on your device (`localStorage`) — no
 account, and by default no data leaves your phone. The one exception is opt-in:
-if you join a group of friends (see **Friends**), a daily summary and whatever
-you deliberately post are shared with that group. Your food diary itself never
-is.
+if you join a group of friends (see **Friends**), your daily summary and your
+actual food diary — what you've logged today, meal by meal — are both visible
+to that group automatically, on your profile, along with a picture and a short
+bio you can set. Nothing leaves your phone unless you join a group.
 
 ## Features
 
@@ -70,14 +71,21 @@ is.
   Cloudflare Worker and a D1 database on your own Cloudflare account, which
   costs nothing at this size. See `api/README.md`. Without it the app behaves
   exactly as it always has.
-  - **Share a meal** — the share icon (↗) next to a meal's + button posts
-    that whole breakfast/lunch/dinner/snacks to the group feed: every item
-    in it, with full nutrition, plus the total. Anyone in the group can tap
-    it to add the whole thing to their own diary in one go. This is a step
-    up from the rest of Friends, worth being clear about: everywhere else,
-    only your day's totals leave your phone; sharing a meal puts the actual
-    foods you ate in front of the group, and only happens when you
-    deliberately tap Share.
+  - **Profiles** — tap anyone in the group, including yourself, for their
+    profile: a picture (pick any emoji, or leave it and your initials are
+    used), a short bio you can set for yourself, and every meal they've
+    logged today, item by item with full nutrition. This is automatic —
+    it needs no tap from them, and it is the biggest privacy step in Friends:
+    everywhere else only totals and whatever you deliberately post leave your
+    phone, but a profile shows the actual foods behind those totals, live, to
+    everyone in the group, for whatever date the Friends tab is showing (today
+    by default, same as the rest of the board).
+  - **Share a meal** — the share icon (↗) next to a meal's + button additionally
+    posts that whole breakfast/lunch/dinner/snacks to the group *feed* (as
+    opposed to a profile, which is looked up): every item in it, with full
+    nutrition, plus the total. Anyone in the group can tap it to add the whole
+    thing to their own diary in one go. Useful for calling attention to one
+    meal in the feed's timeline; profiles already show it either way.
 - **Backup & restore** — export/import your data as a JSON file. API keys and
   group credentials are deliberately left out of the file.
 - **Dark by default** — an OLED-black theme with rounded cards, an open-bottom
@@ -130,11 +138,13 @@ Then in the app: **Friends → paste the URL → Start a new group**. It hands b
 a six-character join code. Everyone else installs the app, opens Friends, and
 enters the same URL plus that code.
 
-What gets shared is a summary — calories eaten against budget, macros, and how
-many items were logged — not the diary itself. Numbers update as people log,
-not once a day: each person's day is a single row that gets overwritten, which
-is why logging all day costs no more than logging once. Writes made offline are
-queued on the phone and delivered when there's a connection.
+What gets shared is a day's summary — calories eaten against budget, macros,
+how many items were logged — and, on each person's profile, the actual meals
+behind those numbers: what they had for breakfast, lunch, dinner and snacks
+today, item by item. Both update as people log, not once a day: each person's
+day is a single row that gets overwritten (both the summary and the item
+list), which is why logging all day costs no more than logging once. Writes
+made offline are queued on the phone and delivered when there's a connection.
 
 Photo sharing is off until you bind an R2 bucket; `api/README.md` covers that,
 and what the join code does and does not protect. It also covers billing: R2 is

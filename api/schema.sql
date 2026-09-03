@@ -91,3 +91,31 @@ CREATE TABLE IF NOT EXISTS shared_meals (
   sodium      REAL NOT NULL DEFAULT 0,
   items_json  TEXT NOT NULL DEFAULT '[]'
 );
+
+-- A picture and a short bio per member, shown on their profile. Separate
+-- table rather than new columns on members, for the same reason as above:
+-- a plain additive CREATE TABLE IF NOT EXISTS stays safe against a database
+-- that already exists in the wild. avatar holds a single emoji chosen by the
+-- member (or is empty, in which case the client falls back to their initials).
+CREATE TABLE IF NOT EXISTS member_profiles (
+  member_id   TEXT PRIMARY KEY,
+  avatar      TEXT NOT NULL DEFAULT '',
+  info        TEXT NOT NULL DEFAULT '',
+  updated_at  INTEGER NOT NULL DEFAULT 0
+);
+
+-- One row per member per day, overwritten in place just like `days` - this is
+-- what makes a profile's "what they had today" section possible. Unlike
+-- shared_meals (which only exists once someone deliberately taps Share on one
+-- meal), this is written automatically alongside every day summary, so a
+-- member's profile shows their actual logged foods without them doing
+-- anything beyond logging. That is a real step past the rest of Friends'
+-- opt-in model, and is deliberate - see README.
+CREATE TABLE IF NOT EXISTS day_items (
+  group_id    TEXT NOT NULL,
+  member_id   TEXT NOT NULL,
+  date        TEXT NOT NULL,
+  items_json  TEXT NOT NULL DEFAULT '{}',
+  updated_at  INTEGER NOT NULL,
+  PRIMARY KEY (group_id, member_id, date)
+);

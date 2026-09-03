@@ -137,6 +137,29 @@ function escapeAttr(str) {
   return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// A stable background color per name, so the same person's initials avatar
+// looks the same everywhere without any storage - just a hash of their name
+// picking a hue.
+function nameColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return `hsl(${hash % 360}, 55%, 38%)`;
+}
+
+// A member's picture, everywhere it's shown: their chosen avatar emoji if
+// they've set one, otherwise their initials on a color derived from their
+// name. Never needs a network request, so it renders instantly even before
+// any photo infrastructure exists for this server.
+function avatarHtml(member, size = 'small') {
+  const name = member?.name || '?';
+  const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+  const cls = `avatar-circle ${size === 'large' ? 'large' : 'small'}`;
+  if (member?.avatar) {
+    return `<span class="${cls} avatar-emoji">${escapeHtml(member.avatar)}</span>`;
+  }
+  return `<span class="${cls}" style="background:${nameColor(name)}">${escapeHtml(initials)}</span>`;
+}
+
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   if (dateStr === todayStr()) return 'Today';
@@ -367,6 +390,26 @@ function renderToday() {
 
   // Everything that changes the diary ends up re-rendering, so this one call
   // site covers every add, edit and delete without threading sync through them.
+  //
+  // `items` rides along with the totals: the actual foods behind them, so a
+  // group profile can show what someone had today, not just their numbers.
+  // This is automatic, same as the totals - unlike the meal-share feed post
+  // below, it needs no tap. See README.
+  const dayItems = {};
+  MEALS.forEach(m => {
+    dayItems[m.key] = state.diaryDay[m.key].map(i => ({
+      name: i.name,
+      servingDesc: i.servingDesc || '1 serving',
+      qty: i.qty,
+      calories: i.calories,
+      protein: i.protein,
+      carbs: i.carbs,
+      fat: i.fat,
+      fiber: i.fiber,
+      sugar: i.sugar,
+      sodium: i.sodium
+    }));
+  });
   queueDaySync({
     date: state.currentDate,
     eaten: eaten.calories,
@@ -375,7 +418,8 @@ function renderToday() {
     protein: eaten.protein,
     carbs: eaten.carbs,
     fat: eaten.fat,
-    entries: MEALS.reduce((n, m) => n + state.diaryDay[m.key].length, 0)
+    entries: MEALS.reduce((n, m) => n + state.diaryDay[m.key].length, 0),
+    items: dayItems
   });
 
   const exList = document.getElementById('exercise-list');
@@ -1633,18 +1677,18 @@ function renderFriends() {
 
     if (!m.logged) {
       return `
-        <div class="friend-row quiet">
+        <div class="friend-row quiet" data-member-id="${escapeAttr(m.id)}">
           <div class="friend-top">
-            <span class="friend-name">${escapeHtml(m.name)}${isMe ? ' <span class="friend-you">you</span>' : ''}</span>
+            <span class="friend-who">${avatarHtml(m)}<span class="friend-name">${escapeHtml(m.name)}${isMe ? ' <span class="friend-you">you</span>' : ''}</span></span>
             <span class="friend-status">Nothing logged</span>
           </div>
           <div class="friend-track"><div class="friend-fill" style="width:0%"></div></div>
         </div>`;
     }
     return `
-      <div class="friend-row">
+      <div class="friend-row" data-member-id="${escapeAttr(m.id)}">
         <div class="friend-top">
-          <span class="friend-name">${escapeHtml(m.name)}${isMe ? ' <span class="friend-you">you</span>' : ''}</span>
+          <span class="friend-who">${avatarHtml(m)}<span class="friend-name">${escapeHtml(m.name)}${isMe ? ' <span class="friend-you">you</span>' : ''}</span></span>
           <span class="friend-status ${over ? 'over' : ''}">${over
             ? `${Math.abs(remaining).toLocaleString()} over`
             : `${remaining.toLocaleString()} left`}</span>
@@ -1713,6 +1757,58 @@ function renderFriends() {
   });
 }
 
+// Which member's profile the sheet is currently showing, so the Save button
+// knows who it's editing (always the signed-in member - the form is only
+// ever shown on your own profile) without threading an id through it.
+let profileMemberId = null;
+
+// Opens the profile sheet for one member: their picture, their info line
+// (editable only when it's your own), and every meal they've logged for the
+// board's date, item by item. Unlike the meal-share feed, none of this needed
+// a tap from them - it rides along on the same automatic sync as their day
+// totals. See README.
+function renderMemberProfile(memberId) {
+  const data = friends.board;
+  if (!data) return;
+  const member = data.members.find(m => m.id === memberId);
+  if (!member) return;
+  profileMemberId = memberId;
+  const isMe = member.id === data.me.id;
+
+  document.getElementById('profile-name').textContent = member.name + (isMe ? ' (you)' : '');
+  document.getElementById('profile-avatar').innerHTML = avatarHtml(member, 'large');
+
+  const infoEl = document.getElementById('profile-info');
+  infoEl.textContent = member.info || (isMe ? '' : 'No info yet.');
+  infoEl.classList.toggle('placeholder', !member.info);
+
+  document.getElementById('profile-edit').classList.toggle('hidden', !isMe);
+  if (isMe) {
+    document.getElementById('profile-avatar-input').value = member.avatar || '';
+    document.getElementById('profile-info-input').value = member.info || '';
+    document.getElementById('profile-save-status').textContent = '';
+  }
+
+  document.getElementById('profile-meals-title').textContent = `${formatDate(data.date)}'s meals`;
+  const mealsEl = document.getElementById('profile-meals');
+  const sections = MEALS.map(m => {
+    const items = (member.items && member.items[m.key]) || [];
+    if (!items.length) return '';
+    const total = Math.round(items.reduce((s, i) => s + i.calories * i.qty, 0));
+    const lines = items.map(i =>
+      `<div class="shared-meal-item">${foodEmoji(i.name)} ${escapeHtml(i.name)}${i.qty !== 1 ? ` · ${i.qty}×` : ''}</div>`
+    ).join('');
+    return `
+      <div class="profile-meal">
+        <div class="profile-meal-head"><strong>${m.label}</strong><span>${total.toLocaleString()} cal</span></div>
+        <div class="shared-meal-items">${lines}</div>
+      </div>`;
+  }).filter(Boolean).join('');
+  mealsEl.innerHTML = sections || `<div class="empty-hint">${isMe ? "Nothing logged yet today." : "Nothing logged yet."}</div>`;
+
+  openModal('member-profile-modal');
+}
+
 function fileToJpegBlob(file, maxEdge = 900, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -1779,6 +1875,36 @@ function wireFriends() {
   document.getElementById('friends-refresh-btn').addEventListener('click', async () => {
     await groups.flush().catch(() => {});
     refreshBoard(true);
+  });
+
+  document.getElementById('friends-members').addEventListener('click', e => {
+    const row = e.target.closest('.friend-row');
+    if (!row) return;
+    renderMemberProfile(row.dataset.memberId);
+  });
+
+  document.getElementById('profile-save-btn').addEventListener('click', async () => {
+    if (!profileMemberId) return;
+    const avatar = document.getElementById('profile-avatar-input').value.trim();
+    const info = document.getElementById('profile-info-input').value.trim();
+    const btn = document.getElementById('profile-save-btn');
+    const statusEl = document.getElementById('profile-save-status');
+    btn.disabled = true;
+    statusEl.textContent = '';
+    try {
+      await groups.saveProfile({ avatar, info });
+      // Updates the board in place so the sheet and the member list both
+      // reflect the change immediately, without waiting on a re-fetch.
+      const member = friends.board?.members.find(m => m.id === profileMemberId);
+      if (member) { member.avatar = avatar; member.info = info; }
+      renderMemberProfile(profileMemberId);
+      document.getElementById('profile-save-status').textContent = 'Saved';
+      renderFriends();
+    } catch (err) {
+      statusEl.textContent = err.message || 'Could not save that.';
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   document.getElementById('friends-feed').addEventListener('click', async e => {

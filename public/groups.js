@@ -188,6 +188,10 @@ const groups = {
     return this.json(`/api/board?date=${encodeURIComponent(date)}`);
   },
 
+  async saveProfile({ avatar, info }) {
+    return this.json('/api/profile', { method: 'PUT', body: { avatar, info } });
+  },
+
   async uploadPhoto(blob) {
     const res = await this.request('/api/photos', {
       method: 'POST',

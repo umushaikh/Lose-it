@@ -177,8 +177,9 @@
       <!-- Shown until this device has joined a group. -->
       <div id="friends-setup">
         <p class="panel-lede">See how everyone's day is going, and share the odd
-          photo. Your food diary stays on your phone — only a daily summary and
-          whatever you choose to post is shared.</p>
+          photo. Tap anyone's name for their profile: a picture, a short bio,
+          and everything they've logged today — automatically, not just what
+          they choose to post.</p>
         <label class="field">Server address
           <input id="friends-server" class="text-input" type="url" inputmode="url"
                  autocapitalize="off" autocorrect="off" spellcheck="false"
@@ -222,6 +223,9 @@
           </span>
         </label>
 
+        <p class="field-hint">Tap anyone's row for their profile — their picture,
+          bio, and today's meals, item by item. This is automatic for everyone
+          in the group, including yourself; nothing to tap to make it visible.</p>
         <div id="friends-members" class="list"></div>
 
         <div class="friends-feed-head">
@@ -414,6 +418,34 @@
     <button type="button" id="invite-copy-btn" class="primary-btn full">Copy both</button>
     <p class="field-hint">Anyone with these can see the group and post to it, so
       send them the way you would a house key.</p>
+  </div>
+</div>
+
+<!-- A group member's profile: their picture, their info, and everything they've
+     logged today - automatic for everyone in the group, not just what they
+     choose to post. Doubles as the "edit my profile" sheet when it's your own. -->
+<div id="member-profile-modal" class="modal hidden" data-close-modal="member-profile-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="profile-name">Profile</h3>
+      <button class="icon-btn" data-close-modal="member-profile-modal">✕</button>
+    </div>
+    <div class="profile-head">
+      <span id="profile-avatar"></span>
+      <p id="profile-info" class="profile-info"></p>
+    </div>
+    <div id="profile-edit" class="hidden">
+      <label class="field">Your picture (an emoji)
+        <input id="profile-avatar-input" class="text-input" type="text" maxlength="8" placeholder="🙂" />
+      </label>
+      <label class="field">About you
+        <input id="profile-info-input" class="text-input" type="text" maxlength="140" placeholder="A short note the group can see" />
+      </label>
+      <button type="button" id="profile-save-btn" class="secondary-btn full">Save profile</button>
+      <div id="profile-save-status" class="search-status"></div>
+    </div>
+    <h4 id="profile-meals-title" class="profile-meals-title">Today's meals</h4>
+    <div id="profile-meals"></div>
   </div>
 </div>
 
