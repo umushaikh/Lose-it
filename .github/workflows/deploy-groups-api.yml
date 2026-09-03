@@ -53,6 +53,12 @@ jobs:
       - name: Install wrangler
         run: npm ci
 
+      # Probes each capability the deploy needs and names the missing checkbox.
+      # Wrangler's own error for a mis-scoped token does not tell you which
+      # permission it wanted.
+      - name: Check the token can do what the deploy needs
+        run: python3 scripts/cf-preflight.py ${{ inputs.enable_photos && '--photos' || '' }}
+
       - name: Create the database if it does not exist yet
         run: |
           if npx wrangler d1 list --json | grep -q "\"name\": *\"$DB_NAME\""; then
