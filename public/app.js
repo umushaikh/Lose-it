@@ -1810,13 +1810,20 @@ function renderMemberProfile(memberId) {
     const items = (member.items && member.items[m.key]) || [];
     if (!items.length) return '';
     const total = Math.round(items.reduce((s, i) => s + i.calories * i.qty, 0));
-    const lines = items.map(i =>
-      `<div class="shared-meal-item">${foodEmoji(i.name)} ${escapeHtml(i.name)}${i.qty !== 1 ? ` · ${i.qty}×` : ''}</div>`
+    // Seeing it here is automatic; copying it into your own diary is not - each
+    // item and the meal as a whole get their own explicit "+ " action, same
+    // shape as the feed's "Add to my diary" on a deliberately shared meal.
+    const lines = items.map((i, idx) => `
+      <div class="shared-meal-item">
+        <span>${foodEmoji(i.name)} ${escapeHtml(i.name)}${i.qty !== 1 ? ` · ${i.qty}×` : ''}</span>
+        ${isMe ? '' : `<button type="button" class="icon-btn small profile-add-item-btn" data-meal="${m.key}" data-item-index="${idx}" title="Add to my diary">+</button>`}
+      </div>`
     ).join('');
     return `
       <div class="profile-meal">
         <div class="profile-meal-head"><strong>${m.label}</strong><span>${total.toLocaleString()} cal</span></div>
         <div class="shared-meal-items">${lines}</div>
+        ${isMe ? '' : `<button type="button" class="secondary-btn small profile-add-meal-btn" data-meal="${m.key}">+ Add whole ${m.label.toLowerCase()} to my diary</button>`}
       </div>`;
   }).filter(Boolean).join('');
   mealsEl.innerHTML = sections || `<div class="empty-hint">${isMe ? "Nothing logged yet today." : "Nothing logged yet."}</div>`;
@@ -1919,6 +1926,41 @@ function wireFriends() {
       statusEl.textContent = err.message || 'Could not save that.';
     } finally {
       btn.disabled = false;
+    }
+  });
+
+  document.getElementById('profile-meals').addEventListener('click', async e => {
+    const member = friends.board?.members.find(m => m.id === profileMemberId);
+    if (!member) return;
+
+    const itemBtn = e.target.closest('.profile-add-item-btn');
+    if (itemBtn) {
+      const meal = itemBtn.dataset.meal;
+      const item = (member.items?.[meal] || [])[Number(itemBtn.dataset.itemIndex)];
+      if (!item) return;
+      if (!confirm(`Add "${item.name}" to your diary today?`)) return;
+      await db.addDiaryEntry(state.currentDate, meal, item);
+      await loadDayData();
+      closeModal('member-profile-modal');
+      state.activeTab = 'today';
+      render();
+      return;
+    }
+
+    const mealBtn = e.target.closest('.profile-add-meal-btn');
+    if (mealBtn) {
+      const meal = mealBtn.dataset.meal;
+      const items = member.items?.[meal] || [];
+      if (!items.length) return;
+      const label = MEALS.find(m => m.key === meal)?.label || meal;
+      if (!confirm(`Add all ${items.length} item${items.length === 1 ? '' : 's'} from ${member.name}'s ${label.toLowerCase()} to your own diary today?`)) return;
+      for (const item of items) {
+        await db.addDiaryEntry(state.currentDate, meal, item);
+      }
+      await loadDayData();
+      closeModal('member-profile-modal');
+      state.activeTab = 'today';
+      render();
     }
   });
 

@@ -74,12 +74,14 @@ bio you can set. Nothing leaves your phone unless you join a group.
   - **Profiles** — tap anyone in the group, including yourself, for their
     profile: a picture (pick any emoji, or leave it and your initials are
     used), a short bio you can set for yourself, and every meal they've
-    logged today, item by item with full nutrition. This is automatic —
-    it needs no tap from them, and it is the biggest privacy step in Friends:
-    everywhere else only totals and whatever you deliberately post leave your
-    phone, but a profile shows the actual foods behind those totals, live, to
-    everyone in the group, for whatever date the Friends tab is showing (today
-    by default, same as the rest of the board).
+    logged today, item by item with full nutrition, each with its own
+    "+ Add to my diary" (and one for the whole meal at once). This is
+    automatic — it needs no tap from them, and it is the biggest privacy
+    step in Friends: everywhere else only totals and whatever you
+    deliberately post leave your phone, but a profile shows the actual
+    foods behind those totals, live, to everyone in the group, for whatever
+    date the Friends tab is showing (today by default, same as the rest of
+    the board).
   - **Share a meal, or just one item** — the share icon (↗) next to a meal's
     + button posts that whole breakfast/lunch/dinner/snacks to the group
     *feed* (as opposed to a profile, which is looked up): every item in it,

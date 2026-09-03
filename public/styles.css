@@ -820,7 +820,15 @@ body.modal-open { overflow: hidden; }
 .feed-item.slim { padding: 12px 16px; }
 .add-shared-meal-btn { margin-top: 8px; }
 .shared-meal-items { margin: 6px 0 4px; }
-.shared-meal-item { font-size: 13px; padding: 2px 0; }
+.shared-meal-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  padding: 2px 0;
+}
+.profile-add-meal-btn { margin-top: 6px; }
 .feed-head {
   display: flex;
   justify-content: space-between;
