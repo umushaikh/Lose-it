@@ -317,16 +317,26 @@ function sumMeal(items) {
 }
 
 function sumDay(diaryDay) {
-  let calories = 0, protein = 0, carbs = 0, fat = 0;
+  const totals = { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 };
   MEALS.forEach(m => {
-    diaryDay[m.key].forEach(item => {
-      calories += item.calories * item.qty;
-      protein += item.protein * item.qty;
-      carbs += item.carbs * item.qty;
-      fat += item.fat * item.qty;
-    });
+    const s = sumMeal(diaryDay[m.key]);
+    totals.calories += s.calories;
+    totals.protein += s.protein;
+    totals.carbs += s.carbs;
+    totals.fat += s.fat;
+    totals.fiber += s.fiber;
+    totals.sugar += s.sugar;
+    totals.sodium += s.sodium;
   });
-  return { calories: Math.round(calories), protein: Math.round(protein), carbs: Math.round(carbs), fat: Math.round(fat) };
+  return {
+    calories: Math.round(totals.calories),
+    protein: Math.round(totals.protein),
+    carbs: Math.round(totals.carbs),
+    fat: Math.round(totals.fat),
+    fiber: Math.round(totals.fiber * 10) / 10,
+    sugar: Math.round(totals.sugar * 10) / 10,
+    sodium: Math.round(totals.sodium)
+  };
 }
 
 function renderToday() {
@@ -456,6 +466,68 @@ function renderMacroBar(key, eaten, goal) {
   const pct = goal > 0 ? Math.min(100, Math.round((eaten / goal) * 100)) : 0;
   document.getElementById(`macro-${key}-fill`).style.width = `${pct}%`;
   document.getElementById(`macro-${key}-label`).textContent = `${eaten}g / ${goal}g`;
+}
+
+// Draws a donut chart from macro calorie shares, stacking arcs the same
+// stroke-dasharray/stroke-dashoffset way the day's own budget ring already
+// draws a partial circle - just carried all the way around for three
+// segments instead of one. An untouched track circle stands in once nothing
+// has been logged, rather than a chart with nothing to show.
+function buildMacroPie(segments) {
+  const r = 80, cx = 100, cy = 100, strokeWidth = 26;
+  const circumference = 2 * Math.PI * r;
+  const total = segments.reduce((s, seg) => s + seg.value, 0);
+  if (total <= 0) {
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--track)" stroke-width="${strokeWidth}" />`;
+  }
+  let offset = 0;
+  return segments.filter(s => s.value > 0).map(seg => {
+    const len = (seg.value / total) * circumference;
+    const dash = `${len.toFixed(1)} ${(circumference - len).toFixed(1)}`;
+    const dashoffset = (-offset).toFixed(1);
+    offset += len;
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="${strokeWidth}" stroke-dasharray="${dash}" stroke-dashoffset="${dashoffset}" />`;
+  }).join('');
+}
+
+// The full macro breakdown "page" - a donut of today's protein/carb/fat
+// calorie split plus fiber, sugar and sodium, which the compact bars on the
+// Today tab have no room for. Computed fresh at open time from the same
+// day totals and goals the bars themselves use, so the two never disagree.
+function renderMacroDetail() {
+  const goals = computeGoals(state.settings);
+  const eaten = sumDay(state.diaryDay);
+  const segments = [
+    { key: 'protein', label: 'Protein', grams: eaten.protein, target: goals.macros.proteinG, value: eaten.protein * 4, color: 'var(--protein)' },
+    { key: 'carbs', label: 'Carbs', grams: eaten.carbs, target: goals.macros.carbsG, value: eaten.carbs * 4, color: 'var(--carbs)' },
+    { key: 'fat', label: 'Fat', grams: eaten.fat, target: goals.macros.fatG, value: eaten.fat * 9, color: 'var(--fat)' }
+  ];
+  const totalMacroCal = segments.reduce((s, seg) => s + seg.value, 0);
+
+  document.getElementById('macro-pie').innerHTML = buildMacroPie(segments);
+  document.getElementById('macro-pie-calories').textContent = eaten.calories.toLocaleString();
+  document.getElementById('macro-pie-empty').classList.toggle('hidden', totalMacroCal > 0);
+
+  document.getElementById('macro-detail-main').innerHTML = segments.map(seg => {
+    const pct = totalMacroCal > 0 ? Math.round((seg.value / totalMacroCal) * 100) : 0;
+    return `
+      <div class="macro-detail-row">
+        <span class="macro-dot" style="background:${seg.color}"></span>
+        <span class="macro-detail-name">${seg.label}</span>
+        <span class="macro-detail-value">${pct}% · <strong>${Math.round(seg.grams)}g</strong> / ${Math.round(seg.target)}g</span>
+      </div>`;
+  }).join('');
+
+  const EXTRA = [
+    { label: 'Fiber', value: `${eaten.fiber}g`, hint: 'General guideline: about 25–38g a day' },
+    { label: 'Sugar', value: `${eaten.sugar}g`, hint: 'WHO guideline: under about 50g a day' },
+    { label: 'Sodium', value: `${eaten.sodium.toLocaleString()}mg`, hint: 'General guideline: under 2,300mg a day' }
+  ];
+  document.getElementById('macro-detail-extra').innerHTML = EXTRA.map(e => `
+    <div class="macro-detail-extra-row">
+      <div class="macro-detail-extra-head"><span>${e.label}</span><span>${e.value}</span></div>
+      <div class="macro-detail-hint">${e.hint}</div>
+    </div>`).join('');
 }
 
 // Lists your saved foods and the whole built-in database together, so the
@@ -2163,6 +2235,11 @@ function wireEvents() {
       await loadDayData();
       render();
     }
+  });
+
+  document.getElementById('macro-bars').addEventListener('click', () => {
+    renderMacroDetail();
+    openModal('macro-detail-modal');
   });
 
   document.getElementById('add-exercise-btn').addEventListener('click', () => {

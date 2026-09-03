@@ -53,7 +53,7 @@
           </div>
         </div>
 
-        <div class="macro-bars">
+        <div id="macro-bars" class="macro-bars">
           <div class="macro-bar">
             <div class="macro-bar-head"><span>Protein</span><span id="macro-protein-label">0g / 0g</span></div>
             <div class="macro-track"><div id="macro-protein-fill" class="macro-fill protein" style="width:0%"></div></div>
@@ -66,6 +66,7 @@
             <div class="macro-bar-head"><span>Fat</span><span id="macro-fat-label">0g / 0g</span></div>
             <div class="macro-track"><div id="macro-fat-fill" class="macro-fill fat" style="width:0%"></div></div>
           </div>
+          <div class="macro-bars-hint">Tap for the full breakdown, including fiber, sugar and sodium ›</div>
         </div>
 
         <div id="meal-breakfast" class="meal-section">
@@ -450,6 +451,27 @@
 </div>
 
 <!-- Add exercise -->
+<!-- Full macro breakdown -->
+<div id="macro-detail-modal" class="modal hidden" data-close-modal="macro-detail-modal">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3>Today's macros</h3>
+      <button class="icon-btn" data-close-modal="macro-detail-modal">✕</button>
+    </div>
+    <div class="macro-pie-wrap">
+      <svg viewBox="0 0 200 200" class="macro-pie-svg"><g id="macro-pie"></g></svg>
+      <div class="macro-pie-center">
+        <div id="macro-pie-calories" class="macro-pie-calories">0</div>
+        <div class="macro-pie-label">cal logged</div>
+      </div>
+    </div>
+    <div id="macro-pie-empty" class="empty-hint macro-pie-empty hidden">Nothing logged yet today.</div>
+    <div id="macro-detail-main"></div>
+    <div class="macro-detail-section-title">Also today</div>
+    <div id="macro-detail-extra"></div>
+  </div>
+</div>
+
 <div id="add-exercise-modal" class="modal hidden" data-close-modal="add-exercise-modal">
   <div class="modal-sheet" onclick="event.stopPropagation()">
     <div class="modal-head">
