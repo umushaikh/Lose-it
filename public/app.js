@@ -137,19 +137,22 @@ function escapeAttr(str) {
   return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// A stable background color per name, so the same person's initials avatar
-// looks the same everywhere without any storage - just a hash of their name
-// picking a hue.
-function nameColor(name) {
+// A stable background color per string, picking a hue from a hash of it.
+// Used for an initials avatar's background.
+function hashColor(str) {
   let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
   return `hsl(${hash % 360}, 55%, 38%)`;
 }
 
 // A member's picture, everywhere it's shown: their chosen avatar emoji if
 // they've set one, otherwise their initials on a color derived from their
-// name. Never needs a network request, so it renders instantly even before
-// any photo infrastructure exists for this server.
+// member id (never their name - there is nothing stopping two people, or
+// the same person rejoining after losing their local credentials, from
+// sharing a name, and they'd otherwise get an identical-looking avatar with
+// no way to tell them apart in the member list or a profile). Never needs a
+// network request, so it renders instantly even before any photo
+// infrastructure exists for this server.
 function avatarHtml(member, size = 'small') {
   const name = member?.name || '?';
   const initials = name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
@@ -157,7 +160,18 @@ function avatarHtml(member, size = 'small') {
   if (member?.avatar) {
     return `<span class="${cls} avatar-emoji">${escapeHtml(member.avatar)}</span>`;
   }
-  return `<span class="${cls}" style="background:${nameColor(name)}">${escapeHtml(initials)}</span>`;
+  return `<span class="${cls}" style="background:${hashColor(member?.id || name)}">${escapeHtml(initials)}</span>`;
+}
+
+// A short, stable tag ("#2") appended to a member's name only when someone
+// else in the group shares it - so "which Lishy is which" stays answerable
+// instead of two identical-looking rows. Numbered by join order (the board's
+// natural order), which stays consistent across renders and refreshes.
+function duplicateNameTag(member, allMembers) {
+  const sameName = allMembers.filter(m => m.name === member.name);
+  if (sameName.length < 2) return '';
+  const idx = sameName.findIndex(m => m.id === member.id);
+  return ` <span class="friend-dupe-tag">#${idx + 1}</span>`;
 }
 
 function formatDate(dateStr) {
@@ -1686,7 +1700,7 @@ function renderFriends() {
       return `
         <div class="friend-row quiet" data-member-id="${escapeAttr(m.id)}">
           <div class="friend-top">
-            <span class="friend-who">${avatarHtml(m)}<span class="friend-name">${escapeHtml(m.name)}${isMe ? ' <span class="friend-you">you</span>' : ''}</span></span>
+            <span class="friend-who">${avatarHtml(m)}<span class="friend-name">${escapeHtml(m.name)}${duplicateNameTag(m, data.members)}${isMe ? ' <span class="friend-you">you</span>' : ''}</span></span>
             <span class="friend-status">Nothing logged</span>
           </div>
           <div class="friend-track"><div class="friend-fill" style="width:0%"></div></div>
@@ -1695,7 +1709,7 @@ function renderFriends() {
     return `
       <div class="friend-row" data-member-id="${escapeAttr(m.id)}">
         <div class="friend-top">
-          <span class="friend-who">${avatarHtml(m)}<span class="friend-name">${escapeHtml(m.name)}${isMe ? ' <span class="friend-you">you</span>' : ''}</span></span>
+          <span class="friend-who">${avatarHtml(m)}<span class="friend-name">${escapeHtml(m.name)}${duplicateNameTag(m, data.members)}${isMe ? ' <span class="friend-you">you</span>' : ''}</span></span>
           <span class="friend-status ${over ? 'over' : ''}">${over
             ? `${Math.abs(remaining).toLocaleString()} over`
             : `${remaining.toLocaleString()} left`}</span>
@@ -1712,7 +1726,8 @@ function renderFriends() {
   const feedEl = document.getElementById('friends-feed');
   feedEl.innerHTML = data.events.length
     ? data.events.map(e => {
-      const who = escapeHtml(e.memberName);
+      const eventMember = data.members.find(m => m.id === e.memberId);
+      const who = escapeHtml(e.memberName) + (eventMember ? duplicateNameTag(eventMember, data.members) : '');
       const when = timeAgo(e.createdAt);
       if (e.kind === 'photo') {
         return `
@@ -1790,7 +1805,8 @@ function renderMemberProfile(memberId) {
   profileMemberId = memberId;
   const isMe = member.id === data.me.id;
 
-  document.getElementById('profile-name').textContent = member.name + (isMe ? ' (you)' : '');
+  document.getElementById('profile-name').innerHTML =
+    `${escapeHtml(member.name)}${duplicateNameTag(member, data.members)}${isMe ? ' (you)' : ''}`;
   document.getElementById('profile-avatar').innerHTML = avatarHtml(member, 'large');
 
   const infoEl = document.getElementById('profile-info');
