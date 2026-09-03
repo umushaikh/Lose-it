@@ -71,9 +71,41 @@ to match, so nothing breaks either way.
 R2's free tier is 10 GB. Photos are downscaled to 900px and recompressed before
 they leave the phone: a 12 MB source measured 84 KB on the way out, and that was
 random noise, which compresses far worse than a photograph. Ten gigabytes is
-therefore on the order of a hundred thousand photos. If you would rather they
-expire, add a lifecycle rule on the bucket in the Cloudflare dashboard; feed
-rows delete themselves after 90 days regardless.
+therefore on the order of a hundred thousand photos.
+
+## Billing safety
+
+Of the three services this uses, only R2 can actually charge you. Workers and
+D1 stay on Cloudflare's free plan, which simply rejects requests once you're
+over its limits rather than billing anything - reaching that limit would take
+far more traffic than a group of friends ever produces. R2 is different
+because Cloudflare requires a card on file to turn it on at all, and genuinely
+bills for usage past its free tier.
+
+Two things guard against that, enforced by the server itself rather than left
+to Cloudflare's own after-the-fact usage alerts:
+
+- **A hard storage ceiling.** The server tracks the total bytes it has ever
+  written to R2 and refuses new uploads once that total would cross
+  `PHOTO_STORAGE_CEILING_MB` (2048 by default - 2 GiB, tens of thousands of
+  photos, deliberately far under the 10 GB free amount rather than sitting
+  right at the edge of it). A rejected upload gets a clear "storage limit
+  reached" message rather than a confusing error.
+- **A kill switch.** Setting `PHOTOS_PAUSED = "true"` - in `wrangler.toml`, or
+  directly in the Worker's dashboard under Settings → Variables, which takes
+  effect immediately with no redeploy - stops all photo uploads at once. Use
+  it if usage ever looks wrong and you want it stopped before you've had time
+  to look into why.
+
+Feed rows older than 90 days delete themselves automatically, and now their R2
+photos go with them - not just the row, so storage stays bounded over time
+instead of quietly growing forever underneath a feed that looks like it's
+being cleaned up. (One narrow gap: a photo that gets uploaded but never
+successfully attached to a feed post - e.g. the app closing between those two
+requests - has no event to expire it later. This is rare and bounded by the
+2 MB per-photo cap, so not worth the added complexity of a separate sweep for
+now.) If you'd rather storage expire on Cloudflare's side too, add a lifecycle
+rule to the bucket in the dashboard as a second layer.
 
 ## How access works
 

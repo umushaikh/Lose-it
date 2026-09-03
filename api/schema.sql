@@ -50,3 +50,17 @@ CREATE TABLE IF NOT EXISTS events (
   created_at  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_events_group ON events(group_id, created_at);
+
+-- Tracks the byte size of every photo actually written to R2, independent of
+-- whether the event that references it ever gets posted. This is what a
+-- billing-safety ceiling checks against before accepting a new upload: R2 is
+-- the one piece of this deployment that can be charged for going over its
+-- free tier (Workers and D1 stay on the free plan and just reject over-quota
+-- requests instead), so it is the one worth guarding in code rather than
+-- trusting Cloudflare's own alerting to catch after the fact.
+CREATE TABLE IF NOT EXISTS photo_sizes (
+  photo_key   TEXT PRIMARY KEY,
+  group_id    TEXT NOT NULL,
+  bytes       INTEGER NOT NULL,
+  created_at  INTEGER NOT NULL
+);

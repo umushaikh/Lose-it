@@ -17,6 +17,22 @@ const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 const FEED_LIMIT = 100;
 const EVENT_RETENTION_DAYS = 90;
 
+// R2's free tier is 10 GB-month; Workers and D1 stay on the free plan and
+// simply reject over-quota requests rather than bill anything, so R2 is the
+// only one of the three that a card on file can actually be charged for.
+// This cap sits far under the free amount on purpose - it is a sanity/abuse
+// ceiling, not a "right up to the line" budget - and is enforced here rather
+// than trusted to Cloudflare, since Cloudflare has no automatic spend cap of
+// its own. Override with the PHOTO_STORAGE_CEILING_MB var if you deliberately
+// want more headroom.
+const DEFAULT_PHOTO_STORAGE_CEILING_MB = 2048; // 2 GiB - tens of thousands of photos
+
+function photoStorageCeilingBytes(env) {
+  const mb = Number(env.PHOTO_STORAGE_CEILING_MB);
+  const safeMb = Number.isFinite(mb) && mb > 0 ? mb : DEFAULT_PHOTO_STORAGE_CEILING_MB;
+  return safeMb * 1024 * 1024;
+}
+
 function cors(origin) {
   return {
     'access-control-allow-origin': origin || '*',
@@ -259,6 +275,29 @@ async function getBoard(request, env, member, origin) {
   }, 200, origin);
 }
 
+// Deletes the R2 object and its size-accounting row for every event about to
+// age out of the 90-day feed window. Without this, pruning the feed only ever
+// shrank the events table - the photos themselves stayed in R2 forever, so
+// storage would grow without bound even though nothing looked wrong in the
+// feed. Best-effort: a photo delete failing here shouldn't block posting the
+// new event, so each is caught rather than left to abort the batch.
+async function reapExpiredPhotos(env, groupId, now) {
+  const cutoff = now - EVENT_RETENTION_DAYS * 86400000;
+  const expiring = await env.DB.prepare(
+    'SELECT photo_key FROM events WHERE group_id = ? AND created_at < ? AND photo_key IS NOT NULL'
+  ).bind(groupId, cutoff).all();
+
+  for (const row of expiring.results || []) {
+    try {
+      if (env.PHOTOS) await env.PHOTOS.delete(row.photo_key);
+      await env.DB.prepare('DELETE FROM photo_sizes WHERE photo_key = ?').bind(row.photo_key).run();
+    } catch {
+      // Leaves that one object as a small amount of untracked storage rather
+      // than risk the request; the next post through this group retries it.
+    }
+  }
+}
+
 async function postEvent(request, env, member, origin) {
   const body = await request.json().catch(() => ({}));
   const kind = String(body.kind || '').trim();
@@ -269,6 +308,8 @@ async function postEvent(request, env, member, origin) {
   const text = body.text == null ? null : String(body.text).trim().slice(0, 280);
   const photoKey = body.photoKey == null ? null : String(body.photoKey).slice(0, 200);
   const calories = body.calories == null ? null : num(body.calories);
+
+  await reapExpiredPhotos(env, member.group_id, now);
 
   await env.DB.batch([
     env.DB.prepare('INSERT INTO events (id, group_id, member_id, kind, text, photo_key, calories, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
@@ -283,6 +324,11 @@ async function postEvent(request, env, member, origin) {
 
 async function uploadPhoto(request, env, member, origin) {
   if (!env.PHOTOS) return fail('Photo sharing is not enabled on this server', 501, origin);
+  // A manual, instant off-switch: flip this in the Worker's dashboard
+  // Variables tab (no redeploy needed) if usage ever looks wrong and you want
+  // uploads stopped before you have time to investigate.
+  if (env.PHOTOS_PAUSED === 'true') return fail('Photo sharing is paused for this server right now', 503, origin);
+
   const type = request.headers.get('content-type') || 'image/jpeg';
   if (!type.startsWith('image/')) return fail('Only images can be uploaded', 415, origin);
 
@@ -290,8 +336,18 @@ async function uploadPhoto(request, env, member, origin) {
   if (bytes.byteLength === 0) return fail('Empty upload', 400, origin);
   if (bytes.byteLength > MAX_PHOTO_BYTES) return fail('That image is too large', 413, origin);
 
+  // Enforced here rather than left to Cloudflare, which has no spend cap of
+  // its own for R2 - only alerts you could act on after the fact.
+  const ceiling = photoStorageCeilingBytes(env);
+  const usage = await env.DB.prepare('SELECT COALESCE(SUM(bytes), 0) AS total FROM photo_sizes').first();
+  if ((usage?.total || 0) + bytes.byteLength > ceiling) {
+    return fail('This server has reached its photo storage limit. Ask whoever set it up to raise PHOTO_STORAGE_CEILING_MB, or delete some old photos.', 507, origin);
+  }
+
   const key = `${member.group_id}/${crypto.randomUUID()}.jpg`;
   await env.PHOTOS.put(key, bytes, { httpMetadata: { contentType: type } });
+  await env.DB.prepare('INSERT INTO photo_sizes (photo_key, group_id, bytes, created_at) VALUES (?, ?, ?, ?)')
+    .bind(key, member.group_id, bytes.byteLength, Date.now()).run();
   return json({ key }, 201, origin);
 }
 

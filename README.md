@@ -123,4 +123,9 @@ is why logging all day costs no more than logging once. Writes made offline are
 queued on the phone and delivered when there's a connection.
 
 Photo sharing is off until you bind an R2 bucket; `api/README.md` covers that,
-and what the join code does and does not protect.
+and what the join code does and does not protect. It also covers billing: R2 is
+the only one of the three Cloudflare services this uses that can actually
+charge you (Workers and D1 stay on the free plan and just reject over-quota
+requests instead of billing), and the server enforces its own storage ceiling
+and a manual pause switch rather than relying on Cloudflare to catch it after
+the fact.

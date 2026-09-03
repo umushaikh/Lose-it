@@ -15,3 +15,17 @@ database_id = "PLACEHOLDER_RUN_API_SETUP"
 # [[r2_buckets]]
 # binding = "PHOTOS"
 # bucket_name = "calorie-counter-photos"
+
+[vars]
+# Billing safety net for R2, the one piece of this deployment that a card on
+# file can actually be charged for (Workers and D1 stay on the free plan and
+# simply reject over-quota requests, never bill). PHOTO_STORAGE_CEILING_MB is
+# a hard cap the server enforces itself before accepting a new photo upload -
+# 2 GiB by default, deliberately far under R2's 10 GB free tier, and holds
+# tens of thousands of photos at this app's compression, so raise it only if
+# you are sure you want to. PHOTOS_PAUSED is a manual off-switch: flip it to
+# "true" here (or directly in the Worker's dashboard Variables tab, which
+# takes effect immediately with no redeploy) to stop uploads at once if usage
+# ever looks wrong, without touching anything else.
+PHOTO_STORAGE_CEILING_MB = "2048"
+PHOTOS_PAUSED = "false"
